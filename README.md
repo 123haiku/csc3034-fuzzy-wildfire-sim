@@ -87,6 +87,9 @@ pip install -r requirements.txt
 # Run the fuzzy inference demo
 python src/run_demo.py
 
+# Enter custom sensor readings interactively
+python src/run_demo.py --interactive
+
 # Generate visualization plots for the report and poster
 python src/visualize_membership.py
 ```
