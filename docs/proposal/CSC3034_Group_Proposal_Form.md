@@ -13,7 +13,7 @@
 | 1 | Pang Wei Sheng | 24035115 | 24035115@imail.sunway.edu.my | Fuzzy Inference Engine & Mathematical Formulation |
 | 2 | Roshan A/L Sivakumar | 23028285 | 23028285@imail.sunway.edu.my | Report Writing, Documentation & Defuzzification Analysis |
 | 3 | Dinesswar A/ L sathasivam | 23096910 | 23096910@imail.sunway.edu.my | NVIDIA Isaac Sim Scene & Synthetic Sensor Bridge |
-| 4 | *(Slot 4 Open)* | *Pending* | *Pending* | Report Writing, Documentation & Defuzzification Analysis |
+| 4 | Yeoh Choon Hern | 23100795 | 23100795@imail.sunway.edu.my | Simulation Evaluation, Benchmark Scenarios & Poster |
 
 ---
 
