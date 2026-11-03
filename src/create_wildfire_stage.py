@@ -272,11 +272,8 @@ def generate_uav_drone_usda() -> str:
             double height = 0.015
             double radius = {prop_radius:.2f}
             float3 xformOp:translate = ({arm_length * 0.707:.3f}, {arm_length * 0.707:.3f}, 0.04)
-            float3 xformOp:rotateXYZ.timeSamples = {{
-                0: (0.0, 0.0, 0.0),
-                620: (0.0, 0.0, 24800.0)
-            }}
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            float3 xformOp:scale = (1.0, 1.0, 1.0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
             rel material:binding = </World/Materials/DroneRotor>
         }}
 
@@ -286,11 +283,8 @@ def generate_uav_drone_usda() -> str:
             double height = 0.015
             double radius = {prop_radius:.2f}
             float3 xformOp:translate = ({arm_length * 0.707:.3f}, {-arm_length * 0.707:.3f}, 0.04)
-            float3 xformOp:rotateXYZ.timeSamples = {{
-                0: (0.0, 0.0, 0.0),
-                620: (0.0, 0.0, -24800.0)
-            }}
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            float3 xformOp:scale = (1.0, 1.0, 1.0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
             rel material:binding = </World/Materials/DroneRotor>
         }}
 
@@ -300,11 +294,8 @@ def generate_uav_drone_usda() -> str:
             double height = 0.015
             double radius = {prop_radius:.2f}
             float3 xformOp:translate = ({-arm_length * 0.707:.3f}, {arm_length * 0.707:.3f}, 0.04)
-            float3 xformOp:rotateXYZ.timeSamples = {{
-                0: (0.0, 0.0, 0.0),
-                620: (0.0, 0.0, -24800.0)
-            }}
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            float3 xformOp:scale = (1.0, 1.0, 1.0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
             rel material:binding = </World/Materials/DroneRotor>
         }}
 
@@ -314,11 +305,8 @@ def generate_uav_drone_usda() -> str:
             double height = 0.015
             double radius = {prop_radius:.2f}
             float3 xformOp:translate = ({-arm_length * 0.707:.3f}, {-arm_length * 0.707:.3f}, 0.04)
-            float3 xformOp:rotateXYZ.timeSamples = {{
-                0: (0.0, 0.0, 0.0),
-                620: (0.0, 0.0, 24800.0)
-            }}
-            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            float3 xformOp:scale = (1.0, 1.0, 1.0)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
             rel material:binding = </World/Materials/DroneRotor>
         }}
     }}"""
@@ -507,8 +495,7 @@ def Xform "World"
             {{
                 uniform token info:id = "UsdPreviewSurface"
                 color3f inputs:diffuseColor = (0.85, 0.15, 0.15)
-                float inputs:opacity = 0.65
-                float inputs:roughness = 0.3
+                float inputs:roughness = 0.35
                 token outputs:surface
             }}
         }}
