@@ -10,10 +10,10 @@
 
 | No. | Full Name | Student ID | Sunway Email | Role / Responsibility |
 |:---:|:---|:---:|:---|:---|
-| 1 | *(Leader Name)* | *e.g., 22012345* | *student@imail.sunway.edu.my* | Fuzzy Inference Engine & Mathematical Formulation |
-| 2 | *(Member 2)* | *e.g., 22012346* | *student@imail.sunway.edu.my* | NVIDIA Isaac Sim Scene & Synthetic Sensor Bridge |
-| 3 | *(Member 3)* | *e.g., 22012347* | *student@imail.sunway.edu.my* | Simulation Evaluation, Benchmark Scenarios & Poster |
-| 4 | *(Member 4)* | *e.g., 22012348* | *student@imail.sunway.edu.my* | Report Writing, Documentation & Defuzzification Analysis |
+| 1 | Pang Wei Sheng | 24035115 | 24035115@imail.sunway.edu.my | Fuzzy Inference Engine & Mathematical Formulation |
+| 2 | ☢️🚨 *wannalaughbot - Nuclear Warning!!! ATTENTION！市民请注意 | 4 | 4@imail.sunway.edu.my | ID |
+| 3 | *(Slot 3 Open)* | *Pending* | *Pending* | Simulation Evaluation, Benchmark Scenarios & Poster |
+| 4 | *(Slot 4 Open)* | *Pending* | *Pending* | Report Writing, Documentation & Defuzzification Analysis |
 
 ---
 
