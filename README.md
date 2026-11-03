@@ -99,6 +99,14 @@ python src/visualize_membership.py
 2. Open the scene asset (forest terrain / UAV drone stage).
 3. Use the integrated Python environment or Isaac Sim Python executable (`python.bat` / `python.sh`) to execute `src/fuzzy_system/isaac_sim_bridge.py`.
 
+Without Isaac Sim hardware, run the deterministic mock bridge from the repository root:
+```bash
+python -m src.fuzzy_system.isaac_sim_bridge --scenario worsening --steps 10
+```
+Available scenarios are `normal`, `worsening`, and `critical`. The mock bridge
+generates changing environmental readings, updates a simulated UAV position, and
+logs patrol responses for each step.
+
 ---
 
 ## 🧪 Running Unit Tests
