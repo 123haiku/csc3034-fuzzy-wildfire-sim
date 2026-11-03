@@ -1,0 +1,2253 @@
+#usda 1.0
+(
+    customLayerData = {
+        string creator = "CSC3034 Computational Intelligence - Wildfire Fuzzy Surveillance"
+        string description = "Procedural Forest Terrain and Animated UAV Drone Stage for NVIDIA Isaac Sim"
+    }
+    defaultPrim = "World"
+    metersPerUnit = 1.0
+    upAxis = "Z"
+    startTimeCode = 0
+    endTimeCode = 620
+    timeCodesPerSecond = 30
+)
+
+def Xform "World"
+{
+    # Physics Scene Configuration
+    def PhysicsScene "PhysicsScene"
+    {
+        vector3f physics:gravityDirection = (0.0, 0.0, -1.0)
+        float physics:gravityMagnitude = 9.81
+    }
+
+    # Lighting: Sun & Skylight
+    def DistantLight "SunLight"
+    {
+        float inputs:angle = 1.2
+        color3f inputs:color = (1.0, 0.96, 0.88)
+        float inputs:intensity = 2800.0
+        float3 xformOp:rotateXYZ = (-48.0, 32.0, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+    }
+
+    def DomeLight "SkyLight"
+    {
+        color3f inputs:color = (0.75, 0.85, 1.0)
+        float inputs:intensity = 450.0
+    }
+
+    # Visual & Physics Materials
+    def Scope "Materials"
+    {
+        def Material "GroundMaterial"
+        {
+            token outputs:surface.connect = </World/Materials/GroundMaterial/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.16, 0.22, 0.11)
+                float inputs:roughness = 0.85
+                token outputs:surface
+            }
+        }
+
+        def Material "BarkMaterial"
+        {
+            token outputs:surface.connect = </World/Materials/BarkMaterial/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.28, 0.17, 0.10)
+                float inputs:roughness = 0.90
+                token outputs:surface
+            }
+        }
+
+        def Material "FoliageHealthy"
+        {
+            token outputs:surface.connect = </World/Materials/FoliageHealthy/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.09, 0.32, 0.12)
+                float inputs:roughness = 0.65
+                token outputs:surface
+            }
+        }
+
+        def Material "FoliageDry"
+        {
+            token outputs:surface.connect = </World/Materials/FoliageDry/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.55, 0.44, 0.18)
+                float inputs:roughness = 0.75
+                token outputs:surface
+            }
+        }
+
+        def Material "HotspotFire"
+        {
+            token outputs:surface.connect = </World/Materials/HotspotFire/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (1.0, 0.22, 0.05)
+                color3f inputs:emissiveColor = (1.0, 0.35, 0.08)
+                float inputs:roughness = 0.2
+                token outputs:surface
+            }
+        }
+
+        def Material "DroneChassis"
+        {
+            token outputs:surface.connect = </World/Materials/DroneChassis/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.08, 0.09, 0.10)
+                float inputs:metallic = 0.8
+                float inputs:roughness = 0.35
+                token outputs:surface
+            }
+        }
+
+        def Material "DroneAccent"
+        {
+            token outputs:surface.connect = </World/Materials/DroneAccent/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.95, 0.55, 0.08)
+                float inputs:roughness = 0.4
+                token outputs:surface
+            }
+        }
+
+        def Material "DroneSensorLens"
+        {
+            token outputs:surface.connect = </World/Materials/DroneSensorLens/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.05, 0.05, 0.08)
+                color3f inputs:emissiveColor = (0.1, 0.4, 0.8)
+                float inputs:roughness = 0.1
+                token outputs:surface
+            }
+        }
+
+        def Material "DroneRotor"
+        {
+            token outputs:surface.connect = </World/Materials/DroneRotor/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:id = "UsdPreviewSurface"
+                color3f inputs:diffuseColor = (0.85, 0.15, 0.15)
+                float inputs:opacity = 0.65
+                float inputs:roughness = 0.3
+                token outputs:surface
+            }
+        }
+    }
+
+    # Forest Ground Plane & Terrain Boundary
+    def Cube "GroundPlane" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        double size = 1.0
+        float3 xformOp:scale = (65.0, 65.0, 0.2)
+        float3 xformOp:translate = (0.0, 0.0, -0.1)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        rel material:binding = </World/Materials/GroundMaterial>
+    }
+
+    # Forest Trees Environment
+    def Scope "ForestEnvironment"
+    {
+
+    def Xform "Tree_000" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (9.06, -30.87, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.07
+            double radius = 0.34
+            float3 xformOp:translate = (0.0, 0.0, 1.04)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.84
+            double radius = 1.56
+            float3 xformOp:translate = (0.0, 0.0, 2.99)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.61
+            double radius = 1.17
+            float3 xformOp:translate = (0.0, 0.0, 4.14)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_001" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (11.49, 25.49, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.73
+            double radius = 0.41
+            float3 xformOp:translate = (0.0, 0.0, 0.87)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.54
+            double radius = 1.88
+            float3 xformOp:translate = (0.0, 0.0, 2.50)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.35
+            double radius = 1.41
+            float3 xformOp:translate = (0.0, 0.0, 3.46)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_002" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-18.29, 0.35, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.62
+            double radius = 0.33
+            float3 xformOp:translate = (0.0, 0.0, 0.81)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.44
+            double radius = 1.52
+            float3 xformOp:translate = (0.0, 0.0, 2.34)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.26
+            double radius = 1.14
+            float3 xformOp:translate = (0.0, 0.0, 3.25)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_003" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (2.92, -18.17, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.64
+            double radius = 0.55
+            float3 xformOp:translate = (0.0, 0.0, 1.32)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.34
+            double radius = 2.50
+            float3 xformOp:translate = (0.0, 0.0, 3.81)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.05
+            double radius = 1.87
+            float3 xformOp:translate = (0.0, 0.0, 5.27)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_004" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (19.88, 12.88, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.19
+            double radius = 0.32
+            float3 xformOp:translate = (0.0, 0.0, 1.09)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.94
+            double radius = 1.45
+            float3 xformOp:translate = (0.0, 0.0, 3.16)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.70
+            double radius = 1.09
+            float3 xformOp:translate = (0.0, 0.0, 4.37)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_005" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-10.62, -26.47, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.75
+            double radius = 0.56
+            float3 xformOp:translate = (0.0, 0.0, 0.87)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.55
+            double radius = 2.56
+            float3 xformOp:translate = (0.0, 0.0, 2.53)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.36
+            double radius = 1.92
+            float3 xformOp:translate = (0.0, 0.0, 3.50)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_006" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (19.96, 14.93, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.54
+            double radius = 0.61
+            float3 xformOp:translate = (0.0, 0.0, 1.27)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.26
+            double radius = 2.76
+            float3 xformOp:translate = (0.0, 0.0, 3.67)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.98
+            double radius = 2.07
+            float3 xformOp:translate = (0.0, 0.0, 5.08)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_007" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (3.38, 21.41, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.69
+            double radius = 0.57
+            float3 xformOp:translate = (0.0, 0.0, 1.34)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.39
+            double radius = 2.58
+            float3 xformOp:translate = (0.0, 0.0, 3.88)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.09
+            double radius = 1.93
+            float3 xformOp:translate = (0.0, 0.0, 5.38)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_008" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (13.30, -29.52, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.99
+            double radius = 0.37
+            float3 xformOp:translate = (0.0, 0.0, 0.99)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.76
+            double radius = 1.66
+            float3 xformOp:translate = (0.0, 0.0, 2.87)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.54
+            double radius = 1.25
+            float3 xformOp:translate = (0.0, 0.0, 3.97)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_009" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-17.37, -25.93, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.08
+            double radius = 0.49
+            float3 xformOp:translate = (0.0, 0.0, 1.04)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.84
+            double radius = 2.22
+            float3 xformOp:translate = (0.0, 0.0, 3.00)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.61
+            double radius = 1.66
+            float3 xformOp:translate = (0.0, 0.0, 4.15)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_010" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-8.44, -18.88, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.06
+            double radius = 0.59
+            float3 xformOp:translate = (0.0, 0.0, 1.03)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.83
+            double radius = 2.70
+            float3 xformOp:translate = (0.0, 0.0, 2.97)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.60
+            double radius = 2.02
+            float3 xformOp:translate = (0.0, 0.0, 4.11)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_011" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (7.09, -21.38, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.89
+            double radius = 0.32
+            float3 xformOp:translate = (0.0, 0.0, 1.44)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.57
+            double radius = 1.46
+            float3 xformOp:translate = (0.0, 0.0, 4.17)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.25
+            double radius = 1.10
+            float3 xformOp:translate = (0.0, 0.0, 5.77)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_012" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (31.82, 9.10, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.58
+            double radius = 0.50
+            float3 xformOp:translate = (0.0, 0.0, 1.29)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.29
+            double radius = 2.30
+            float3 xformOp:translate = (0.0, 0.0, 3.72)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.00
+            double radius = 1.72
+            float3 xformOp:translate = (0.0, 0.0, 5.16)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_013" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (17.94, -17.61, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.63
+            double radius = 0.38
+            float3 xformOp:translate = (0.0, 0.0, 0.82)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.45
+            double radius = 1.70
+            float3 xformOp:translate = (0.0, 0.0, 2.36)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.27
+            double radius = 1.28
+            float3 xformOp:translate = (0.0, 0.0, 3.27)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_014" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-18.79, 28.79, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.15
+            double radius = 0.37
+            float3 xformOp:translate = (0.0, 0.0, 1.58)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.80
+            double radius = 1.70
+            float3 xformOp:translate = (0.0, 0.0, 4.55)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.45
+            double radius = 1.28
+            float3 xformOp:translate = (0.0, 0.0, 6.30)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_015" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-6.78, 26.95, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.40
+            double radius = 0.36
+            float3 xformOp:translate = (0.0, 0.0, 1.20)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.13
+            double radius = 1.62
+            float3 xformOp:translate = (0.0, 0.0, 3.47)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.87
+            double radius = 1.22
+            float3 xformOp:translate = (0.0, 0.0, 4.80)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_016" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (3.99, -15.42, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.63
+            double radius = 0.58
+            float3 xformOp:translate = (0.0, 0.0, 1.31)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.34
+            double radius = 2.64
+            float3 xformOp:translate = (0.0, 0.0, 3.79)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.04
+            double radius = 1.98
+            float3 xformOp:translate = (0.0, 0.0, 5.25)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_017" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-18.24, 32.34, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.49
+            double radius = 0.30
+            float3 xformOp:translate = (0.0, 0.0, 1.25)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.22
+            double radius = 1.35
+            float3 xformOp:translate = (0.0, 0.0, 3.60)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.94
+            double radius = 1.01
+            float3 xformOp:translate = (0.0, 0.0, 4.98)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_018" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-25.37, 8.28, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.00
+            double radius = 0.41
+            float3 xformOp:translate = (0.0, 0.0, 1.50)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.67
+            double radius = 1.88
+            float3 xformOp:translate = (0.0, 0.0, 4.33)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.33
+            double radius = 1.41
+            float3 xformOp:translate = (0.0, 0.0, 6.00)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_019" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-7.69, 32.25, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.53
+            double radius = 0.61
+            float3 xformOp:translate = (0.0, 0.0, 1.26)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.25
+            double radius = 2.75
+            float3 xformOp:translate = (0.0, 0.0, 3.65)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.97
+            double radius = 2.07
+            float3 xformOp:translate = (0.0, 0.0, 5.05)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_020" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-31.75, 14.35, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.80
+            double radius = 0.45
+            float3 xformOp:translate = (0.0, 0.0, 1.40)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.49
+            double radius = 2.06
+            float3 xformOp:translate = (0.0, 0.0, 4.05)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.18
+            double radius = 1.54
+            float3 xformOp:translate = (0.0, 0.0, 5.60)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_021" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (9.16, -25.25, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.36
+            double radius = 0.42
+            float3 xformOp:translate = (0.0, 0.0, 1.18)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.10
+            double radius = 1.93
+            float3 xformOp:translate = (0.0, 0.0, 3.41)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.83
+            double radius = 1.44
+            float3 xformOp:translate = (0.0, 0.0, 4.72)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_022" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (24.43, -15.38, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.48
+            double radius = 0.33
+            float3 xformOp:translate = (0.0, 0.0, 1.24)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.20
+            double radius = 1.49
+            float3 xformOp:translate = (0.0, 0.0, 3.58)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.93
+            double radius = 1.11
+            float3 xformOp:translate = (0.0, 0.0, 4.95)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_023" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (24.08, -13.10, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.73
+            double radius = 0.48
+            float3 xformOp:translate = (0.0, 0.0, 1.36)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.42
+            double radius = 2.17
+            float3 xformOp:translate = (0.0, 0.0, 3.94)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.12
+            double radius = 1.63
+            float3 xformOp:translate = (0.0, 0.0, 5.45)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_024" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (17.06, 2.56, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.98
+            double radius = 0.45
+            float3 xformOp:translate = (0.0, 0.0, 1.49)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.65
+            double radius = 2.05
+            float3 xformOp:translate = (0.0, 0.0, 4.30)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.32
+            double radius = 1.54
+            float3 xformOp:translate = (0.0, 0.0, 5.95)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_025" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-11.43, -31.23, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.25
+            double radius = 0.57
+            float3 xformOp:translate = (0.0, 0.0, 1.62)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.89
+            double radius = 2.61
+            float3 xformOp:translate = (0.0, 0.0, 4.69)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.53
+            double radius = 1.95
+            float3 xformOp:translate = (0.0, 0.0, 6.49)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_026" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-12.51, -28.73, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.16
+            double radius = 0.60
+            float3 xformOp:translate = (0.0, 0.0, 1.58)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.80
+            double radius = 2.72
+            float3 xformOp:translate = (0.0, 0.0, 4.56)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.45
+            double radius = 2.04
+            float3 xformOp:translate = (0.0, 0.0, 6.31)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_027" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-0.91, -28.00, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.94
+            double radius = 0.53
+            float3 xformOp:translate = (0.0, 0.0, 1.47)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.62
+            double radius = 2.43
+            float3 xformOp:translate = (0.0, 0.0, 4.25)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.29
+            double radius = 1.82
+            float3 xformOp:translate = (0.0, 0.0, 5.89)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_029" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-15.27, 24.21, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.34
+            double radius = 0.34
+            float3 xformOp:translate = (0.0, 0.0, 1.17)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.08
+            double radius = 1.54
+            float3 xformOp:translate = (0.0, 0.0, 3.38)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.82
+            double radius = 1.15
+            float3 xformOp:translate = (0.0, 0.0, 4.67)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_030" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (14.95, -19.43, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.14
+            double radius = 0.61
+            float3 xformOp:translate = (0.0, 0.0, 1.07)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.90
+            double radius = 2.79
+            float3 xformOp:translate = (0.0, 0.0, 3.09)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.66
+            double radius = 2.09
+            float3 xformOp:translate = (0.0, 0.0, 4.27)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_031" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-4.02, 1.14, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.79
+            double radius = 0.34
+            float3 xformOp:translate = (0.0, 0.0, 0.90)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.59
+            double radius = 1.56
+            float3 xformOp:translate = (0.0, 0.0, 2.59)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.39
+            double radius = 1.17
+            float3 xformOp:translate = (0.0, 0.0, 3.59)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_032" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (5.74, -17.54, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.97
+            double radius = 0.29
+            float3 xformOp:translate = (0.0, 0.0, 0.99)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.75
+            double radius = 1.31
+            float3 xformOp:translate = (0.0, 0.0, 2.85)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.53
+            double radius = 0.99
+            float3 xformOp:translate = (0.0, 0.0, 3.94)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_033" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-17.62, 26.35, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.12
+            double radius = 0.29
+            float3 xformOp:translate = (0.0, 0.0, 1.56)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.78
+            double radius = 1.31
+            float3 xformOp:translate = (0.0, 0.0, 4.51)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.43
+            double radius = 0.99
+            float3 xformOp:translate = (0.0, 0.0, 6.24)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_034" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (10.98, -18.57, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.81
+            double radius = 0.59
+            float3 xformOp:translate = (0.0, 0.0, 0.91)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.61
+            double radius = 2.70
+            float3 xformOp:translate = (0.0, 0.0, 2.62)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.41
+            double radius = 2.02
+            float3 xformOp:translate = (0.0, 0.0, 3.63)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_035" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-1.78, 18.50, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.03
+            double radius = 0.33
+            float3 xformOp:translate = (0.0, 0.0, 1.51)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.69
+            double radius = 1.50
+            float3 xformOp:translate = (0.0, 0.0, 4.37)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.36
+            double radius = 1.13
+            float3 xformOp:translate = (0.0, 0.0, 6.06)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_036" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-4.48, -4.97, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.42
+            double radius = 0.52
+            float3 xformOp:translate = (0.0, 0.0, 1.21)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.15
+            double radius = 2.37
+            float3 xformOp:translate = (0.0, 0.0, 3.49)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.88
+            double radius = 1.77
+            float3 xformOp:translate = (0.0, 0.0, 4.83)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_037" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (31.47, -26.10, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.30
+            double radius = 0.38
+            float3 xformOp:translate = (0.0, 0.0, 1.15)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.04
+            double radius = 1.74
+            float3 xformOp:translate = (0.0, 0.0, 3.32)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.79
+            double radius = 1.31
+            float3 xformOp:translate = (0.0, 0.0, 4.60)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_038" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-16.34, -20.14, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.38
+            double radius = 0.41
+            float3 xformOp:translate = (0.0, 0.0, 1.19)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.12
+            double radius = 1.88
+            float3 xformOp:translate = (0.0, 0.0, 3.44)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.85
+            double radius = 1.41
+            float3 xformOp:translate = (0.0, 0.0, 4.77)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_039" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-16.26, 27.51, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.37
+            double radius = 0.57
+            float3 xformOp:translate = (0.0, 0.0, 1.19)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.11
+            double radius = 2.58
+            float3 xformOp:translate = (0.0, 0.0, 3.43)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.85
+            double radius = 1.93
+            float3 xformOp:translate = (0.0, 0.0, 4.75)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_040" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-29.21, 32.45, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.08
+            double radius = 0.61
+            float3 xformOp:translate = (0.0, 0.0, 1.54)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.74
+            double radius = 2.75
+            float3 xformOp:translate = (0.0, 0.0, 4.45)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.40
+            double radius = 2.06
+            float3 xformOp:translate = (0.0, 0.0, 6.16)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_041" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (22.67, -21.69, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.45
+            double radius = 0.34
+            float3 xformOp:translate = (0.0, 0.0, 1.22)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.18
+            double radius = 1.54
+            float3 xformOp:translate = (0.0, 0.0, 3.54)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.90
+            double radius = 1.16
+            float3 xformOp:translate = (0.0, 0.0, 4.90)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_042" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-28.69, -7.87, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.35
+            double radius = 0.36
+            float3 xformOp:translate = (0.0, 0.0, 1.67)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.98
+            double radius = 1.62
+            float3 xformOp:translate = (0.0, 0.0, 4.84)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.60
+            double radius = 1.22
+            float3 xformOp:translate = (0.0, 0.0, 6.70)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_043" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (-2.92, -5.00, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.30
+            double radius = 0.61
+            float3 xformOp:translate = (0.0, 0.0, 1.65)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.93
+            double radius = 2.79
+            float3 xformOp:translate = (0.0, 0.0, 4.76)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.57
+            double radius = 2.09
+            float3 xformOp:translate = (0.0, 0.0, 6.60)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_044" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (14.20, -22.44, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.11
+            double radius = 0.60
+            float3 xformOp:translate = (0.0, 0.0, 1.05)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.87
+            double radius = 2.75
+            float3 xformOp:translate = (0.0, 0.0, 3.05)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.64
+            double radius = 2.06
+            float3 xformOp:translate = (0.0, 0.0, 4.22)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_045" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (2.74, 16.12, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 1.68
+            double radius = 0.47
+            float3 xformOp:translate = (0.0, 0.0, 0.84)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.49
+            double radius = 2.13
+            float3 xformOp:translate = (0.0, 0.0, 2.42)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.31
+            double radius = 1.60
+            float3 xformOp:translate = (0.0, 0.0, 3.36)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+
+    def Xform "Tree_046" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (22.93, -22.27, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 3.30
+            double radius = 0.29
+            float3 xformOp:translate = (0.0, 0.0, 1.65)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 2.94
+            double radius = 1.33
+            float3 xformOp:translate = (0.0, 0.0, 4.77)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 2.57
+            double radius = 1.00
+            float3 xformOp:translate = (0.0, 0.0, 6.61)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageDry>
+        }
+    }
+
+    def Xform "Tree_047" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        float3 xformOp:translate = (6.18, 11.39, 0.0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "Trunk"
+        {
+            uniform token axis = "Z"
+            double height = 2.00
+            double radius = 0.31
+            float3 xformOp:translate = (0.0, 0.0, 1.00)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/BarkMaterial>
+        }
+
+        def Cone "Canopy_Lower"
+        {
+            uniform token axis = "Z"
+            double height = 1.78
+            double radius = 1.39
+            float3 xformOp:translate = (0.0, 0.0, 2.89)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+
+        def Cone "Canopy_Upper"
+        {
+            uniform token axis = "Z"
+            double height = 1.55
+            double radius = 1.04
+            float3 xformOp:translate = (0.0, 0.0, 4.00)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/FoliageHealthy>
+        }
+    }
+    }
+
+    # Wildfire Ignition Hotspots
+    def Scope "WildfireHotspots"
+    {
+
+    def Xform "Hotspot_01"
+    {
+        float3 xformOp:translate = (14.00, 16.00, 0.05)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "HeatZone"
+        {
+            uniform token axis = "Z"
+            double height = 0.1
+            double radius = 3.50
+            rel material:binding = </World/Materials/HotspotFire>
+        }
+
+        def Sphere "CoreFlame"
+        {
+            double radius = 1.40
+            float3 xformOp:translate = (0.0, 0.0, 1.05)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/HotspotFire>
+        }
+    }
+
+    def Xform "Hotspot_02"
+    {
+        float3 xformOp:translate = (-18.00, 10.00, 0.05)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "HeatZone"
+        {
+            uniform token axis = "Z"
+            double height = 0.1
+            double radius = 2.80
+            rel material:binding = </World/Materials/HotspotFire>
+        }
+
+        def Sphere "CoreFlame"
+        {
+            double radius = 1.12
+            float3 xformOp:translate = (0.0, 0.0, 0.84)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/HotspotFire>
+        }
+    }
+
+    def Xform "Hotspot_03"
+    {
+        float3 xformOp:translate = (8.00, -20.00, 0.05)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+
+        def Cylinder "HeatZone"
+        {
+            uniform token axis = "Z"
+            double height = 0.1
+            double radius = 2.20
+            rel material:binding = </World/Materials/HotspotFire>
+        }
+
+        def Sphere "CoreFlame"
+        {
+            double radius = 0.88
+            float3 xformOp:translate = (0.0, 0.0, 0.66)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/HotspotFire>
+        }
+    }
+    }
+
+    # Autonomous Surveillance UAV Drone
+
+    def Xform "UAV_Drone"
+    {
+        float3 xformOp:translate.timeSamples = {
+            0: (0.00, 0.00, 5.00),
+            40: (4.00, 5.00, 5.50),
+            80: (8.00, 10.00, 6.00),
+            120: (13.50, 15.50, 5.00),
+            160: (15.00, 17.00, 4.50),
+            200: (10.00, 18.00, 6.50),
+            240: (0.00, 15.00, 7.00),
+            280: (-10.00, 12.00, 6.00),
+            320: (-17.50, 9.80, 4.50),
+            380: (-10.00, 0.00, 6.00),
+            440: (0.00, -10.00, 6.50),
+            500: (7.80, -19.50, 5.00),
+            560: (5.00, -10.00, 5.50),
+            620: (0.00, 0.00, 5.00),
+        }
+        float3 xformOp:rotateXYZ.timeSamples = {
+            0: (5.0, 0.0, 51.3),
+            40: (5.0, 0.0, 51.3),
+            80: (5.0, 0.0, 45.0),
+            120: (5.0, 0.0, 45.0),
+            160: (5.0, 0.0, 168.7),
+            200: (5.0, 0.0, -163.3),
+            240: (5.0, 0.0, -163.3),
+            280: (5.0, 0.0, -163.7),
+            320: (5.0, 0.0, -52.6),
+            380: (5.0, 0.0, -45.0),
+            440: (5.0, 0.0, -50.6),
+            500: (5.0, 0.0, 106.4),
+            560: (5.0, 0.0, 116.6),
+            620: (0.0, 0.0, 0.0),
+        }
+        float3 xformOp:scale = (1.0, 1.0, 1.0)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+
+        # Real-time Fuzzy Telemetry Attributes (Keyframed with flight position)
+        custom double fuzzy:temperature.timeSamples = {
+            0: 28.0,
+            40: 28.0,
+            80: 32.4,
+            120: 42.1,
+            160: 41.2,
+            200: 37.4,
+            240: 28.0,
+            280: 32.7,
+            320: 42.3,
+            380: 28.0,
+            440: 28.0,
+            500: 42.3,
+            560: 29.9,
+            620: 28.0,
+        }
+        custom double fuzzy:fire_risk_index.timeSamples = {
+            0: 45.0,
+            40: 45.0,
+            80: 58.0,
+            120: 91.1,
+            160: 82.8,
+            200: 71.3,
+            240: 45.0,
+            280: 60.0,
+            320: 91.2,
+            380: 45.0,
+            440: 45.0,
+            500: 91.2,
+            560: 45.0,
+            620: 45.0,
+        }
+        custom double fuzzy:patrol_urgency_speed.timeSamples = {
+            0: 20.1,
+            40: 20.1,
+            80: 42.3,
+            120: 89.1,
+            160: 76.9,
+            200: 60.0,
+            240: 20.1,
+            280: 45.1,
+            320: 89.2,
+            380: 20.1,
+            440: 20.1,
+            500: 89.2,
+            560: 20.0,
+            620: 20.1,
+        }
+        custom double fuzzy:humidity = 18.0
+        custom double fuzzy:wind_speed = 62.0
+        custom double fuzzy:vegetation_dryness = 88.0
+        custom string fuzzy:alert_status = "PATROLLING"
+        custom int fuzzy:alert_level = 1
+        custom string fuzzy:defuzz_method = "centroid"
+
+        # Central Fuselage
+        def Cube "Fuselage"
+        {
+            double size = 1.0
+            float3 xformOp:scale = (0.35, 0.35, 0.14)
+            uniform token[] xformOpOrder = ["xformOp:scale"]
+            rel material:binding = </World/Materials/DroneChassis>
+        }
+
+        # Avionics & Battery Top Dome
+        def Sphere "AvionicsDome"
+        {
+            double radius = 0.16
+            float3 xformOp:scale = (1.0, 1.0, 0.6)
+            float3 xformOp:translate = (0.0, 0.0, 0.08)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            rel material:binding = </World/Materials/DroneAccent>
+        }
+
+        # Forward Sensor Pod / Thermal Camera
+        def Cylinder "ThermalSensorPod"
+        {
+            uniform token axis = "X"
+            double height = 0.15
+            double radius = 0.06
+            float3 xformOp:translate = (0.22, 0.0, -0.04)
+            uniform token[] xformOpOrder = ["xformOp:translate"]
+            rel material:binding = </World/Materials/DroneSensorLens>
+        }
+
+        # 4 Quadcopter Arms
+        def Cube "Arm_FL"
+        {
+            double size = 1.0
+            float3 xformOp:translate = (0.194, 0.194, 0.0)
+            float3 xformOp:rotateXYZ = (0.0, 0.0, 45.0)
+            float3 xformOp:scale = (0.550, 0.04, 0.03)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            rel material:binding = </World/Materials/DroneChassis>
+        }
+
+        def Cube "Arm_FR"
+        {
+            double size = 1.0
+            float3 xformOp:translate = (0.194, -0.194, 0.0)
+            float3 xformOp:rotateXYZ = (0.0, 0.0, -45.0)
+            float3 xformOp:scale = (0.550, 0.04, 0.03)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            rel material:binding = </World/Materials/DroneChassis>
+        }
+
+        def Cube "Arm_RL"
+        {
+            double size = 1.0
+            float3 xformOp:translate = (-0.194, 0.194, 0.0)
+            float3 xformOp:rotateXYZ = (0.0, 0.0, -45.0)
+            float3 xformOp:scale = (0.550, 0.04, 0.03)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            rel material:binding = </World/Materials/DroneChassis>
+        }
+
+        def Cube "Arm_RR"
+        {
+            double size = 1.0
+            float3 xformOp:translate = (-0.194, -0.194, 0.0)
+            float3 xformOp:rotateXYZ = (0.0, 0.0, 45.0)
+            float3 xformOp:scale = (0.550, 0.04, 0.03)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+            rel material:binding = </World/Materials/DroneChassis>
+        }
+
+        # 4 Rotors with High-Speed Animated Spin
+        def Cylinder "Rotor_FL"
+        {
+            uniform token axis = "Z"
+            double height = 0.015
+            double radius = 0.24
+            float3 xformOp:translate = (0.389, 0.389, 0.04)
+            float3 xformOp:rotateXYZ.timeSamples = {
+                0: (0.0, 0.0, 0.0),
+                620: (0.0, 0.0, 24800.0)
+            }
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            rel material:binding = </World/Materials/DroneRotor>
+        }
+
+        def Cylinder "Rotor_FR"
+        {
+            uniform token axis = "Z"
+            double height = 0.015
+            double radius = 0.24
+            float3 xformOp:translate = (0.389, -0.389, 0.04)
+            float3 xformOp:rotateXYZ.timeSamples = {
+                0: (0.0, 0.0, 0.0),
+                620: (0.0, 0.0, -24800.0)
+            }
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            rel material:binding = </World/Materials/DroneRotor>
+        }
+
+        def Cylinder "Rotor_RL"
+        {
+            uniform token axis = "Z"
+            double height = 0.015
+            double radius = 0.24
+            float3 xformOp:translate = (-0.389, 0.389, 0.04)
+            float3 xformOp:rotateXYZ.timeSamples = {
+                0: (0.0, 0.0, 0.0),
+                620: (0.0, 0.0, -24800.0)
+            }
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            rel material:binding = </World/Materials/DroneRotor>
+        }
+
+        def Cylinder "Rotor_RR"
+        {
+            uniform token axis = "Z"
+            double height = 0.015
+            double radius = 0.24
+            float3 xformOp:translate = (-0.389, -0.389, 0.04)
+            float3 xformOp:rotateXYZ.timeSamples = {
+                0: (0.0, 0.0, 0.0),
+                620: (0.0, 0.0, 24800.0)
+            }
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            rel material:binding = </World/Materials/DroneRotor>
+        }
+    }
+}
