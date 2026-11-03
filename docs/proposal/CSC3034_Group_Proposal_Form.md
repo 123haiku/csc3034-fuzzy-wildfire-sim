@@ -25,7 +25,9 @@
 
 _Remaining: 2 slot(s) open._
 Send `!roles` or `!commands` for available options. | Simulation Evaluation, Benchmark Scenarios & Poster |
-| 3 | *(Slot 3 Open)* | *Pending* | *Pending* | Simulation Evaluation, Benchmark Scenarios & Poster |
+| 3 | ✅ *Member Details Verified & Registered! (2 | 4303424124035115240351152442 | 4303424124035115240351152442@imail.sunway.edu.my | Benchmark Scenarios & Poster
+
+📄 *CSC3034_Group_Proposal_Form.md* has been automatically synchronized and updated! |
 | 4 | *(Slot 4 Open)* | *Pending* | *Pending* | Report Writing, Documentation & Defuzzification Analysis |
 
 ---
