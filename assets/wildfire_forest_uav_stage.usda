@@ -2151,6 +2151,30 @@ def Xform "World"
             rel material:binding = </World/Materials/DroneSensorLens>
         }
 
+        # Third-Person Drone Chase Camera (Locks to UAV flight path)
+        def Camera "ChaseCamera"
+        {
+            float2 clippingRange = (0.05, 2000.0)
+            float focalLength = 18.0
+            float horizontalAperture = 20.955
+            float verticalAperture = 11.787
+            float3 xformOp:translate = (-2.2, 0.0, 0.8)
+            float3 xformOp:rotateXYZ = (75.0, 0.0, -90.0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+        }
+
+        # First-Person Thermal Surveillance Camera (Forward-down view)
+        def Camera "ThermalGimbalCamera"
+        {
+            float2 clippingRange = (0.05, 2000.0)
+            float focalLength = 24.0
+            float horizontalAperture = 20.955
+            float verticalAperture = 11.787
+            float3 xformOp:translate = (0.28, 0.0, -0.06)
+            float3 xformOp:rotateXYZ = (60.0, 0.0, -90.0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+        }
+
         # 4 Quadcopter Arms
         def Cube "Arm_FL"
         {
