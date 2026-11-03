@@ -11,7 +11,20 @@
 | No. | Full Name | Student ID | Sunway Email | Role / Responsibility |
 |:---:|:---|:---:|:---|:---|
 | 1 | Pang Wei Sheng | 24035115 | 24035115@imail.sunway.edu.my | Fuzzy Inference Engine & Mathematical Formulation |
-| 2 | ☢️🚨 *wannalaughbot - Nuclear Warning!!! ATTENTION！市民请注意 | 4 | 4@imail.sunway.edu.my | ID |
+| 2 | ☢️🚨 *wannalaughbot - Nuclear Warning!!! ATTENTION！市民请注意 | 30342 | 4)*
+
+*1. Pang Wei Sheng*
+   🆔 Student ID: `24035115`
+   📧 Email: 24035115@imail.sunway.edu.my
+   🛠️ Role: Fuzzy Inference Engine & Mathematical Formulation
+
+*2. ☢️🚨 *wannalaughbot - Nuclear Warning!!! ATTENTION！市民请注意*
+   🆔 Student ID: `4`
+   📧 Email: 4@imail.sunway.edu.my
+   🛠️ Role: ID
+
+_Remaining: 2 slot(s) open._
+Send `!roles` or `!commands` for available options. | Simulation Evaluation, Benchmark Scenarios & Poster |
 | 3 | *(Slot 3 Open)* | *Pending* | *Pending* | Simulation Evaluation, Benchmark Scenarios & Poster |
 | 4 | *(Slot 4 Open)* | *Pending* | *Pending* | Report Writing, Documentation & Defuzzification Analysis |
 
