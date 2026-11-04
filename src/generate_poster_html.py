@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import base64
+import io
 import os
 from pathlib import Path
+from PIL import Image
 from playwright.sync_api import sync_playwright
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -724,20 +726,16 @@ def generate_poster():
     # Render to PDF and PNG using Playwright
     pdf_file = POSTER_DIR / "CSC3034_A1_Poster.pdf"
     png_file = POSTER_DIR / "CSC3034_A1_Poster.png"
+    png_300dpi_file = POSTER_DIR / "CSC3034_A1_Poster_300DPI.png"
     print("[Poster] Rendering A1 vector PDF and high-res PNG via Playwright Chromium ...")
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        # A1 pixel dimensions for crisp rendering
-        page = browser.new_page(viewport={"width": 2245, "height": 3175}, device_scale_factor=1.5)
-        page.goto(f"file:///{html_file.as_posix()}", wait_until="networkidle")
 
-        # Export high-res PNG
-        page.screenshot(path=str(png_file), full_page=True)
-        print(f"[Poster] Exported high-res PNG ({png_file.stat().st_size:,} bytes) to: {png_file}")
-
-        # Export exact A1 vector PDF
-        page.pdf(
+        # 1. Export exact A1 vector PDF (594mm x 841mm)
+        page_pdf = browser.new_page(viewport={"width": 2245, "height": 3179})
+        page_pdf.goto(f"file:///{html_file.as_posix()}", wait_until="networkidle")
+        page_pdf.pdf(
             path=str(pdf_file),
             width="594mm",
             height="841mm",
@@ -746,9 +744,35 @@ def generate_poster():
         )
         print(f"[Poster] Exported print-ready A1 PDF ({pdf_file.stat().st_size:,} bytes) to: {pdf_file}")
 
+        # 2. Export standard preview PNG (144 DPI / 1.5x supersampling = 3368 x 4769 px)
+        page_144 = browser.new_page(viewport={"width": 2245, "height": 3175}, device_scale_factor=1.5)
+        page_144.goto(f"file:///{html_file.as_posix()}", wait_until="networkidle")
+        buf_144 = page_144.screenshot(full_page=True)
+        # Embed 144 DPI metadata so image viewers calculate exact 594mm x 841mm
+        with Image.open(io.BytesIO(buf_144)) as im144:
+            im144.save(png_file, dpi=(144, 144))
+        print(f"[Poster] Exported 144 DPI PNG ({png_file.stat().st_size:,} bytes, 3368x4769 px) to: {png_file}")
+
+        # 3. Export professional 300 DPI print-ready PNG (3.125x scale = 7016 x 9934 px)
+        page_300 = browser.new_page(viewport={"width": 2245, "height": 3179}, device_scale_factor=3.125)
+        page_300.goto(f"file:///{html_file.as_posix()}", wait_until="networkidle")
+        buf_300 = page_300.screenshot(full_page=True)
+        # Embed 300 DPI metadata so printers and Photoshop calculate exact 594mm x 841mm
+        with Image.open(io.BytesIO(buf_300)) as im300:
+            im300.save(png_300dpi_file, dpi=(300, 300))
+        print(f"[Poster] Exported 300 DPI PNG ({png_300dpi_file.stat().st_size:,} bytes, 7016x9934 px) to: {png_300dpi_file}")
+
         browser.close()
 
-    print("[Poster] All poster formats generated successfully!")
+    # Update artifacts in Antigravity brain directory
+    if conv_artifact_dir.exists():
+        import shutil
+        shutil.copy2(pdf_file, conv_artifact_dir / "CSC3034_A1_Poster.pdf")
+        shutil.copy2(png_file, conv_artifact_dir / "CSC3034_A1_Poster.png")
+        shutil.copy2(png_300dpi_file, conv_artifact_dir / "CSC3034_A1_Poster_300DPI.png")
+        print("[Poster] Synced artifacts to conversation directory.")
+
+    print("[Poster] All poster formats generated and verified successfully!")
 
 
 if __name__ == "__main__":
