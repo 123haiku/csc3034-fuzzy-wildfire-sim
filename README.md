@@ -73,7 +73,7 @@ csc3034-fuzzy-wildfire-sim/
 ### 1. Local Python Environment (Standalone Testing)
 ```bash
 # Clone the repository
-git clone https://github.com/Ipaidforwinrar1/csc3034-fuzzy-wildfire-sim.git
+git clone https://github.com/123haiku/csc3034-fuzzy-wildfire-sim.git
 cd csc3034-fuzzy-wildfire-sim
 
 # Create virtual environment
