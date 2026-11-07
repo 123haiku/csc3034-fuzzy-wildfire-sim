@@ -20,7 +20,7 @@ NOTES = {
         "- 01: four probes sampled at 60 Hz from the USD stage.\n"
         "- 02: sixteen input sets, four per variable.\n"
         "- 03: ten rules, min for AND, max for aggregation.\n"
-        "- 04: centroid defuzzification, 0.07 ms per evaluation loop, measured on the workstation.\n"
+        "- 04: centroid defuzzification; 0.078 ms median per loop, p99 0.36 ms, measured.\n"
         "- 05: throttle 20 % to 90 %, alert WATCH / WARNING / CRITICAL.\n"
         "Say the number that matters: the whole chain is 1.2 % of a 50 ms control budget."
     ),
@@ -57,16 +57,16 @@ NOTES = {
     ),
     8: (
         "DEFUZZIFICATION STUDY (75 s). Frame it as a design decision with a measured cost.\n"
-        "- Defuzzification alone: centroid 2.7 us, MOM 2.8 us, bisector 12.1 us. They do not separate on speed.\n"
+        "- Defuzzification alone: centroid 2.5 us, MOM 2.8 us, bisector 11.8 us. They do not separate on speed.\n"
         "- MOM averages the maxima of the aggregated set, so crossing a boundary jumps the output between peaks - a torque step on a 250 g airframe.\n"
         "- Centroid weights the whole area, so output is continuous in the input. That property matters more than raw latency.\n"
-        "- 2.7 us is 0.005 % of a 50 ms loop, so continuity is free: pick the method that does not chatter.\n"
+        "- 2.5 us is 0.005 % of a 50 ms loop, so continuity is free: pick the method that does not chatter.\n"
         "Q: measured or estimated? A: the microsecond figures are measured on the workstation. There is no Jetson run yet, so quote the edge figure as a projection and say so."
     ),
     9: (
         "FEASIBILITY (45 s). Keep it short - it answers 'can this fly?'\n"
         "- Jetson Orin Nano at 7-15 W fits a micro-UAV pack.\n"
-        "- 0.07 ms measured on the workstation, 0.14 % of the loop; ~0.9 ms projected for Jetson.\n"
+        "- 0.078 ms median measured, p99 0.36 ms; edge figure is a projection.\n"
         "- Payload pairing: FLIR Lepton 3.5 LWIR plus SHT40 for temperature and humidity; LoRa carries the GPS fix to the crew.\n"
         "- SDG 13.1 and 15.2, plus the cost argument: exact coordinates cut containment time and water use.\n"
         "Q: why not the cloud? A: link loss is exactly when a fire matters most, so the decision has to survive offline."
@@ -76,7 +76,7 @@ NOTES = {
         "- Engine: four inputs, ten rules, verified against the report's test vectors.\n"
         "- Twin: 65 m procedural forest at 67-72 FPS.\n"
         "- Actuation: 20 % to 90 % closed loop over a live hotspot.\n"
-        "- Speed: 0.07 ms per loop measured; edge figure is a projection, not a measurement.\n"
+        "- Speed: 0.078 ms median per loop measured, p99 0.36 ms; edge figure is a projection.\n"
         "- Future: ANFIS to replace hand-tuned memberships, multi-UAV mesh, PX4 / Matrice 300 field trials.\n"
         "Say the limitation before they do: simulation only, rule base expert-tuned."
     ),
