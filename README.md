@@ -57,7 +57,20 @@ csc3034-fuzzy-wildfire-sim/
 ├── tests/
 │   ├── __init__.py
 │   └── test_fuzzy_controller.py   # Automated unit tests for rule validation
+├── tools/
+│   └── presentation/              # Deck build pipeline (figures → pptx → pdf) + verifier
+│       ├── README.md              # Rebuild commands and layout conventions
+│       ├── nvidia_plots.py        # Regenerates the two deck figures in the NVIDIA palette
+│       ├── crop_viewport.py       # Cuts Isaac Sim window chrome off the raw captures
+│       ├── build_deck_v4.py       # Builds all 11 slides
+│       ├── deck_notes.py          # Speaker notes, one block per slide
+│       └── verify_deck.py         # Assertion-based check of the .pptx and .pdf
 └── docs/
+    ├── presentation/
+    │   ├── CSC3034_Presentation_Slides.pptx  # 11-slide deck, notes on every slide
+    │   ├── CSC3034_Presentation_Slides.pdf   # Same deck as PDF
+    │   ├── assets/                           # Figures the deck embeds
+    │   └── _archive/                         # Superseded generations (gitignored)
     ├── proposal/
     │   └── CSC3034_Group_Proposal_Form.md   # Project proposal submission template
     ├── report/
@@ -113,6 +126,23 @@ logs patrol responses for each step.
 ```bash
 pytest tests/ -v
 ```
+
+---
+
+## 🎞 Defence Slides
+
+The deck is generated, not hand-edited: `docs/presentation/CSC3034_Presentation_Slides.pptx`
+(11 slides, 16:9, speaker notes on every slide) and its `.pdf` export. Editing the `.pptx`
+by hand is overwritten by the next build.
+
+```bash
+python tools/presentation/nvidia_plots.py   # figures in the NVIDIA palette
+python tools/presentation/build_deck_v4.py  # deck
+python tools/presentation/verify_deck.py    # 16 assertions on the pptx + pdf
+```
+
+See `tools/presentation/README.md` for the full three-step rebuild (figures → deck → PDF)
+and the layout conventions the build enforces.
 
 ---
 

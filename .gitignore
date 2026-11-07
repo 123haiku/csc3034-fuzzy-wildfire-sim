@@ -56,3 +56,6 @@ Output/
 plots/*.png
 plots/*.svg
 !plots/.gitkeep
+
+# Superseded deck generations and one-off repair scripts (kept on disk, not in history)
+docs/presentation/_archive/
