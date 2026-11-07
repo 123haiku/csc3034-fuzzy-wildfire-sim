@@ -171,10 +171,10 @@ text(s, col_id, 4.70, 1.6, 0.24, [("STUDENT ID", 8.5, GREEN, True)])
 text(s, col_role, 4.70, 6.4, 0.24, [("ROLE", 8.5, GREEN, True)])
 
 roster = [
-    ("Pang Wei Sheng", "24035115", "Project lead — fuzzy inference engine architecture"),
+    ("Yeoh Choon Hern", "23100795", "Project lead — coordination and integration"),
+    ("Pang Wei Sheng", "24035115", "Fuzzy inference engine & simulation evaluation"),
     ("Roshan A/L Sivakumar", "23028285", "Technical report — defuzzification analysis"),
     ("Dinesswar A/L Sathasivam", "23096910", "Isaac Sim OpenUSD stage — sensor bridge"),
-    ("Yeoh Choon Hern", "23100795", "Simulation evaluation — benchmarking, A1 poster"),
 ]
 for i, (name, sid, role) in enumerate(roster):
     y = 5.03 + i * 0.50
@@ -218,7 +218,7 @@ stages = [
     ("01", "Synthetic sensing", "Four probes on the OpenUSD stage, sampled at 60 Hz."),
     ("02", "Fuzzification", "16 input sets, four per variable, triangular and trapezoidal."),
     ("03", "Fuzzy inference", "10 expert rules; min for AND, max for aggregation."),
-    ("04", "Defuzzification", "Centroid of area; continuous output at 0.88 ms on the Jetson."),
+    ("04", "Defuzzification", "Centroid of area; continuous output, 0.07 ms per loop measured."),
     ("05", "Actuation and alert", "Throttle 20-90 %; alert WATCH, WARNING or CRITICAL."),
 ]
 cell = (W - 4 * 0.36) / 5
@@ -232,8 +232,8 @@ for i, (num, title, body) in enumerate(stages):
 rule_h(s, L, 4.92, W)
 stats(s, 5.12, [
     ("60 Hz", "sensor tick from the Isaac Sim stage"),
-    ("0.88 ms", "inference on a Jetson Orin Nano"),
-    ("1.2 %", "of the 50 ms control budget"),
+    ("0.07 ms", "per evaluation loop, measured on the workstation"),
+    ("0.14 %", "of the 50 ms control budget"),
 ])
 
 # ------------------------------------------------------------------------ 04
@@ -299,7 +299,7 @@ for tag, ante, fri, thr in rules:
 text(s, L, y + 0.22, W, 0.9,
      [("4 inputs × 4 sets = 256 antecedent combinations, curated down to the 10 that are physically meaningful. ", 11, DIM, False),
       ("Mamdani: min for AND, max for aggregation, centroid for defuzzification.", 11, INK, False),
-      ("Cost: 0.15 ms on a workstation, 0.88 ms on the Jetson target.", 11, DIM, False)])
+      ("Cost: 0.07 ms per loop on the workstation.", 11, DIM, False)])
 
 # ------------------------------------------------------------------------ 06
 s = prs.slides.add_slide(BLANK)
@@ -340,14 +340,14 @@ text(s, 8.30, y - 0.06, 4.28, 0.5,
 # ------------------------------------------------------------------------ 08
 s = prs.slides.add_slide(BLANK)
 frame(s)
-head(s, "Design decision", "Why centroid, and what it costs", 8)
+head(s, "Design decision", "Why centroid, when all three are this cheap", 8)
 
 cols = [2.50, 1.60, 2.95, 1.45, 2.55]
 rows = [
-    ("Method", "Avg latency", "Actuator smoothness", "Noise", "Flight suitability"),
-    ("Centroid (COG)", "0.884 ms", "continuous", "high", "selected"),
-    ("Bisector", "0.912 ms", "good", "moderate", "viable"),
-    ("Mean of max (MOM)", "0.420 ms", "step jumps", "low", "unsafe"),
+    ("Method", "Defuzz cost", "Actuator smoothness", "Noise", "Flight suitability"),
+    ("Centroid (COG)", "2.7 us", "continuous", "high", "selected"),
+    ("Bisector", "12.1 us", "good", "moderate", "viable"),
+    ("Mean of max (MOM)", "2.8 us", "step jumps", "low", "unsafe"),
 ]
 tbl_y = TOP + 0.10
 shape = s.shapes.add_table(len(rows), 5, Inches(L), Inches(tbl_y), Inches(sum(cols)), Inches(0.52 * len(rows)))
@@ -395,15 +395,15 @@ for i in range(len(rows) + 1):
 
 pairs(s, L, 4.62, 5.55, fill_to=6.40, items=[
     ("Continuity, not speed.",
-     "Centroid integrates the whole aggregated area, so a small input change produces a small output change. That is what keeps a 250 g airframe from seeing torque steps."),
-    ("0.884 ms against 50 ms.",
-     "It spends 1.8 % of the control budget. MOM saves 0.46 ms and buys an unstable actuator with it."),
+     "Centroid integrates the whole aggregated area, so a small input change produces a small output change. On a 250 g airframe that is the difference between smooth thrust and torque steps."),
+    ("2.7 us against a 50 ms budget.",
+     "Defuzzification is 0.005 % of the loop, so none of the three methods is expensive. MOM is not faster here: it costs 2.8 us."),
 ])
 pairs(s, RX, 4.62, 5.55, fill_to=6.40, items=[
     ("MOM jumps between peaks.",
      "Mean of maxima returns the average of the aggregated set's maxima, so as the input crosses a boundary the output leaps to the next peak."),
     ("Bisector is a compromise.",
-     "Smooth enough, but 10 % slower than centroid with no measurable benefit in the flight logs."),
+     "Smooth enough, but 4.5x the cost of centroid (12.1 us against 2.7 us) for no change in the flight logs."),
 ])
 
 # ------------------------------------------------------------------------ 09
@@ -415,7 +415,7 @@ text(s, L, TOP, CW, 0.24, [("EDGE STACK", 9.5, GREEN, True)])
 text(s, RX, TOP, CW, 0.24, [("WHY IT MATTERS", 9.5, GREEN, True)])
 pairs(s, L, TOP + 0.36, CW, [
     ("Jetson Orin Nano, 8 GB.", "7-15 W envelope, inside a micro-UAV battery budget."),
-    ("0.88 ms inference.", "Under 2 % of the 50 ms control loop."),
+    ("0.07 ms inference.", "0.14 % of the 50 ms control loop, measured on the workstation."),
     ("Sensors already proven.", "FLIR Lepton 3.5 LWIR for the plume, Sensirion SHT40 for temperature and humidity."),
     ("LoRa backhaul.", "Carries the GPS fix of a confirmed hotspot to the ground crew."),
 ], lead_sz=12, body_sz=10.5, fill_to=6.55)
@@ -437,7 +437,7 @@ pairs(s, L, TOP + 0.36, CW, [
     ("Fuzzy engine.", "Four inputs, ten rules, verified against the report's test vectors."),
     ("Digital twin.", "65 m procedural forest holding 67-72 FPS in real-time ray tracing."),
     ("Closed-loop actuation.", "20 % to 90 % throttle demonstrated over a live hotspot."),
-    ("Edge speed.", "0.15 ms on a workstation, 0.88 ms on the Jetson target."),
+    ("Edge speed.", "0.07 ms per loop measured; ~0.9 ms projected for Jetson, not yet measured."),
 ], lead_sz=12, body_sz=10.5, fill_to=6.10)
 pairs(s, RX, TOP + 0.36, CW, [
     ("ANFIS.", "Replace hand-tuned memberships with functions fitted to satellite burn history."),

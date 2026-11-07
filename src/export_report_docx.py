@@ -55,10 +55,10 @@ def create_report_docx():
     table_auth = doc.add_table(rows=1, cols=4)
     table_auth.alignment = WD_TABLE_ALIGNMENT.CENTER
     authors = [
-        ("Pang Wei Sheng", "24035115", "Project Lead"),
+        ("Yeoh Choon Hern", "23100795", "Project Lead"),
+        ("Pang Wei Sheng", "24035115", "Fuzzy Engine & Simulation"),
         ("Roshan A/L Sivakumar", "23028285", "Technical Report"),
         ("Dinesswar A/L Sathasivam", "23096910", "OpenUSD Scene"),
-        ("Yeoh Choon Hern", "23100795", "Simulation / Poster"),
     ]
     hdr_cells = table_auth.rows[0].cells
     for i, (name, sid, role) in enumerate(authors):

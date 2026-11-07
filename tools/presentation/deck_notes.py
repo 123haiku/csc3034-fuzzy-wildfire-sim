@@ -2,7 +2,7 @@
 
 NOTES = {
     1: (
-        "OPEN (30 s). I am Pang Wei Sheng, project lead on the fuzzy inference engine.\n"
+        "OPEN (30 s). Yeoh Choon Hern leads the project and handles coordination and integration. I am Pang Wei Sheng and I own the fuzzy inference engine and the simulation evaluation.\n"
         "- One line on the problem: forest and peat fires are caught late because patrols rely on single-threshold thermostats.\n"
         "- One line on the build: a four-input Mamdani controller flying a UAV inside an Isaac Sim digital twin, closed loop.\n"
         "- Read the roadmap: problem, pipeline, fuzzy engine, rule base, twin, flight results, defuzzification study, feasibility, conclusion.\n"
@@ -20,7 +20,7 @@ NOTES = {
         "- 01: four probes sampled at 60 Hz from the USD stage.\n"
         "- 02: sixteen input sets, four per variable.\n"
         "- 03: ten rules, min for AND, max for aggregation.\n"
-        "- 04: centroid defuzzification, 0.88 ms on the Jetson target.\n"
+        "- 04: centroid defuzzification, 0.07 ms per evaluation loop, measured on the workstation.\n"
         "- 05: throttle 20 % to 90 %, alert WATCH / WARNING / CRITICAL.\n"
         "Say the number that matters: the whole chain is 1.2 % of a 50 ms control budget."
     ),
@@ -57,16 +57,16 @@ NOTES = {
     ),
     8: (
         "DEFUZZIFICATION STUDY (75 s). Frame it as a design decision with a measured cost.\n"
-        "- Centroid 0.884 ms, bisector 0.912 ms, MOM 0.420 ms. MOM is twice as fast and still unusable.\n"
+        "- Defuzzification alone: centroid 2.7 us, MOM 2.8 us, bisector 12.1 us. They do not separate on speed.\n"
         "- MOM averages the maxima of the aggregated set, so crossing a boundary jumps the output between peaks - a torque step on a 250 g airframe.\n"
         "- Centroid weights the whole area, so output is continuous in the input. That property matters more than raw latency.\n"
-        "- 0.884 ms is 1.8 % of the 50 ms budget, so the 0.46 ms premium buys smoothness for free.\n"
-        "Q: measured or estimated? A: measured on the workstation and scaled to the Jetson target - say so plainly."
+        "- 2.7 us is 0.005 % of a 50 ms loop, so continuity is free: pick the method that does not chatter.\n"
+        "Q: measured or estimated? A: the microsecond figures are measured on the workstation. There is no Jetson run yet, so quote the edge figure as a projection and say so."
     ),
     9: (
         "FEASIBILITY (45 s). Keep it short - it answers 'can this fly?'\n"
         "- Jetson Orin Nano at 7-15 W fits a micro-UAV pack.\n"
-        "- 0.88 ms inference is under 2 % of the 50 ms loop.\n"
+        "- 0.07 ms measured on the workstation, 0.14 % of the loop; ~0.9 ms projected for Jetson.\n"
         "- Payload pairing: FLIR Lepton 3.5 LWIR plus SHT40 for temperature and humidity; LoRa carries the GPS fix to the crew.\n"
         "- SDG 13.1 and 15.2, plus the cost argument: exact coordinates cut containment time and water use.\n"
         "Q: why not the cloud? A: link loss is exactly when a fire matters most, so the decision has to survive offline."
@@ -76,7 +76,7 @@ NOTES = {
         "- Engine: four inputs, ten rules, verified against the report's test vectors.\n"
         "- Twin: 65 m procedural forest at 67-72 FPS.\n"
         "- Actuation: 20 % to 90 % closed loop over a live hotspot.\n"
-        "- Speed: 0.15 ms workstation, 0.88 ms edge.\n"
+        "- Speed: 0.07 ms per loop measured; edge figure is a projection, not a measurement.\n"
         "- Future: ANFIS to replace hand-tuned memberships, multi-UAV mesh, PX4 / Matrice 300 field trials.\n"
         "Say the limitation before they do: simulation only, rule base expert-tuned."
     ),

@@ -3,6 +3,7 @@
 **Lecturer**: Dr. Tang Tiong Yew  
 **Institution**: Sunway University  
 **Submission Deadline**: 15 November 2026, 11:59 PM  
+**Group Leader**: Yeoh Choon Hern  
 **Project Status**: Approved & Simulation Validated  
 
 ---
@@ -11,10 +12,10 @@
 
 | No. | Full Name | Student ID | Sunway Email | Role / Responsibility |
 |:---:|:---|:---:|:---|:---|
-| 1 | **Pang Wei Sheng** | 24035115 | 24035115@imail.sunway.edu.my | **Project Lead**: Fuzzy Inference Engine Architecture, OpenUSD Scene Design & Mathematical Formulation |
-| 2 | **Roshan A/L Sivakumar** | 23028285 | 23028285@imail.sunway.edu.my | Technical Report Writing, Documentation & Defuzzification Analysis |
-| 3 | **Dinesswar A/L Sathasivam** | 23096910 | 23096910@imail.sunway.edu.my | NVIDIA Isaac Sim Scene Assets & Synthetic Sensor Bridge |
-| 4 | **Yeoh Choon Hern** | 23100795 | 23100795@imail.sunway.edu.my | Simulation Evaluation, Benchmark Scenarios & A1 Infographic Poster |
+| 1 | **Yeoh Choon Hern** | 23100795 | 23100795@imail.sunway.edu.my | **Project Lead**: Coordination, Integration & Project Management |
+| 2 | **Pang Wei Sheng** | 24035115 | 24035115@imail.sunway.edu.my | **Fuzzy Inference Engine & Simulation**: Mamdani Engine, Benchmark Scenarios, Telemetry Evaluation & A1 Poster |
+| 3 | **Roshan A/L Sivakumar** | 23028285 | 23028285@imail.sunway.edu.my | Technical Report Writing, Documentation & Defuzzification Analysis |
+| 4 | **Dinesswar A/L Sathasivam** | 23096910 | 23096910@imail.sunway.edu.my | NVIDIA Isaac Sim Scene Assets & Synthetic Sensor Bridge |
 
 ---
 
