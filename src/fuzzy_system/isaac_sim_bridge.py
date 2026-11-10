@@ -104,7 +104,8 @@ class IsaacSimFuzzyBridge:
         """Dispatches computed fuzzy control targets to Isaac Sim agents."""
         risk_index = outputs["fire_risk_index"]
         speed = outputs["patrol_urgency_speed"]
-        alert = outputs["alert_name"]
+        alert_value = outputs["suppression_alert_level"]
+        alert = outputs["alert_level"]
 
         # Advance UAV position along patrol grid
         self.uav_position[0] += speed / 50.0
@@ -113,7 +114,8 @@ class IsaacSimFuzzyBridge:
         print(f"\n--- [Isaac Sim Action Graph Execution] Step {self.step_number} ---")
         print(f"Computed Wildfire Risk Index : {risk_index:.2f} / 100")
         print(f"Patrol Urgency / Drone Speed : {speed:.2f} %")
-        print(f"Dispatched System Status     : [{alert}]")
+        print(f"Suppression Alert Level      : {alert_value:.3f} / 3  [{alert}]")
+        print(f"Dispatched System Status     : [{outputs['alert_name']}] {outputs['alert_label']}")
         print(f"UAV Patrol Position          : ({self.uav_position[0]:.2f}, {self.uav_position[1]:.2f}, {self.uav_position[2]:.2f}m)")
 
         if self.is_connected and self.drone_prim and self.drone_prim.IsValid():
@@ -121,7 +123,8 @@ class IsaacSimFuzzyBridge:
                 # Update custom USD attributes on the live drone prim
                 self.drone_prim.GetAttribute("fuzzy:fire_risk_index").Set(risk_index)
                 self.drone_prim.GetAttribute("fuzzy:patrol_urgency_speed").Set(speed)
-                self.drone_prim.GetAttribute("fuzzy:alert_status").Set(alert)
+                self.drone_prim.GetAttribute("fuzzy:alert_level").Set(alert)
+                self.drone_prim.GetAttribute("fuzzy:alert_status").Set(outputs["alert_name"])
                 print("[IsaacSimBridge] Synchronized telemetry to live USD Stage attributes.")
             except Exception as e:
                 print(f"[IsaacSimBridge] USD attribute sync notice: {e}")

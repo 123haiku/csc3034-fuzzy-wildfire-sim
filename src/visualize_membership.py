@@ -15,9 +15,8 @@ def plot_membership_functions(output_dir: str = "plots"):
     c = WildfireFuzzyController()
 
     plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
-    fig, axes = plt.subplots(3, 2, figsize=(14, 12))
+    fig, axes = plt.subplots(3, 2, figsize=(14, 14))
     fig.suptitle("Fuzzy Linguistic Membership Functions (CSC3034)", fontsize=16, fontweight="bold")
-
     # 1. Temperature
     ax = axes[0, 0]
     for name, mf in c.mf_temp.items():
@@ -79,5 +78,54 @@ def plot_membership_functions(output_dir: str = "plots"):
     print(f"[Plot Generated] Membership functions saved to {chart_path}")
 
 
+def plot_output_membership_functions(output_dir: str = "plots"):
+    """Plots the three output universes side by side, including the alert consequent."""
+    os.makedirs(output_dir, exist_ok=True)
+    c = WildfireFuzzyController()
+
+    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
+    fig, axes = plt.subplots(3, 1, figsize=(11, 12))
+    fig.suptitle("Fuzzy Output Universes: Risk, Throttle, Suppression Alert", fontsize=16, fontweight="bold")
+
+    # 1. Fire Risk Index
+    ax = axes[0]
+    for name, mf in c.mf_risk.items():
+        ax.plot(c.x_risk, mf, label=name.capitalize(), linewidth=2)
+    ax.set_title("Output 1: Fire Risk Index (FRI)")
+    ax.set_xlabel("Risk Score (0 - 100)")
+    ax.set_ylabel("Degree of Membership")
+    ax.set_ylim(-0.05, 1.08)
+    ax.legend(loc="upper right")
+
+    # 2. UAV Patrol Urgency / Speed
+    ax = axes[1]
+    for name, mf in c.mf_speed.items():
+        ax.plot(c.x_speed, mf, label=name.replace("_", " ").capitalize(), linewidth=2)
+    ax.set_title("Output 2: UAV Patrol Urgency / Speed")
+    ax.set_xlabel("Speed Actuation (%)")
+    ax.set_ylabel("Degree of Membership")
+    ax.set_ylim(-0.05, 1.08)
+    ax.legend(loc="upper right")
+
+    # 3. Suppression Alert Level
+    ax = axes[2]
+    for name, mf in c.mf_alert.items():
+        ax.plot(c.x_alert, mf, label=name.replace("_", " ").capitalize(), linewidth=2)
+    ax.set_title("Output 3: Suppression Alert Level")
+    ax.set_xlabel("Alert Level (0 Advisory | 1 Watch | 2 Warning | 3 Evacuate/Suppress)")
+    ax.set_ylabel("Degree of Membership")
+    ax.set_xlim(0, 3)
+    ax.set_xticks([0, 1, 2, 3])
+    ax.set_ylim(-0.05, 1.08)
+    ax.legend(loc="upper right")
+
+    plt.tight_layout()
+    chart_path = os.path.join(output_dir, "output_membership_functions.png")
+    plt.savefig(chart_path, dpi=300)
+    plt.close()
+    print(f"[Plot Generated] Output membership functions saved to {chart_path}")
+
+
 if __name__ == "__main__":
     plot_membership_functions()
+    plot_output_membership_functions()

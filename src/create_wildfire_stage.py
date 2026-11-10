@@ -627,6 +627,7 @@ def run_stage_patrol_simulation(stage_path: Path, steps: int = 12) -> List[Dict[
             "vegetation_dryness": current_dryness,
             "fire_risk_index": outputs["fire_risk_index"],
             "patrol_speed": outputs["patrol_urgency_speed"],
+            "suppression_alert_level": outputs["suppression_alert_level"],
             "alert_level": outputs["alert_level"],
             "alert_name": outputs["alert_name"],
         }
@@ -635,7 +636,8 @@ def run_stage_patrol_simulation(stage_path: Path, steps: int = 12) -> List[Dict[
         print(
             f"Step {step_idx:02d} | Coord: ({wx:5.1f}, {wy:5.1f}, {wz:3.1f}m) | "
             f"Sensors: [T={current_temp:4.1f}°C, RH={current_humidity:4.1f}%, W={current_wind:4.1f}km/h, FuelDry={current_dryness:4.1f}%] | "
-            f"Fuzzy FRI: {outputs['fire_risk_index']:5.1f} | Urgency: {outputs['patrol_urgency_speed']:5.1f}% | [{outputs['alert_name']}]"
+            f"Fuzzy FRI: {outputs['fire_risk_index']:5.1f} | Urgency: {outputs['patrol_urgency_speed']:5.1f}% | "
+            f"Alert: {outputs['suppression_alert_level']:4.2f} [{outputs['alert_name']}]"
         )
 
     print(f"==================================================================")

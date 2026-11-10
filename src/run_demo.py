@@ -49,7 +49,9 @@ def run_scenarios(controller: WildfireFuzzyController):
         print(f"  Inputs  : Temp={sc['temp']}°C | Humidity={sc['humidity']}% | Wind={sc['wind']}km/h | Fuel Dryness={sc['fuel']}%")
         print(f"  Outputs : Fire Risk Index = {res['fire_risk_index']:5.1f} / 100")
         print(f"            Drone Patrol Speed = {res['patrol_urgency_speed']:5.1f} %")
-        print(f"            Alert Level = {res['alert_level']} ({res['alert_name']})")
+        print(f"            Suppression Alert = {res['suppression_alert_level']:4.2f} / 3  "
+              f"[{res['alert_level']}] {res['alert_name']} ({res['alert_label']})")
+        print(f"            Action = {res['alert_action']}")
 
 
 def prompt_for_value(label: str, minimum: float, maximum: float) -> float:
@@ -83,7 +85,9 @@ def run_interactive(controller: WildfireFuzzyController):
     print("\n--- Wildfire Assessment ---")
     print(f"Fire Risk Index       : {result['fire_risk_index']:.2f} / 100")
     print(f"Patrol Urgency/Speed  : {result['patrol_urgency_speed']:.2f}%")
-    print(f"Alert Level           : {result['alert_level']} ({result['alert_name']})")
+    print(f"Suppression Alert     : {result['suppression_alert_level']:.3f} / 3")
+    print(f"Alert Tier            : {result['alert_level']} - {result['alert_name']} ({result['alert_label']})")
+    print(f"Recommended Action    : {result['alert_action']}")
 
 
 def main():
