@@ -559,8 +559,13 @@ def Xform "World"
     return output_path
 
 
-def run_stage_patrol_simulation(stage_path: Path, steps: int = 12) -> List[Dict[str, float]]:
-    """Simulates UAV drone patrolling across the forest stage, computing fuzzy risk at each waypoint."""
+def run_stage_patrol_simulation(stage_path: Path, steps: int = 12, seed: int = 0) -> List[Dict[str, float]]:
+    """Simulates UAV drone patrolling across the forest stage, computing fuzzy risk at each waypoint.
+
+    The synthetic sensor noise is drawn from a seeded generator local to the call, so a
+    given seed always reproduces the same mission log and the report tables stay valid.
+    """
+    rng = random.Random(seed)
     controller = WildfireFuzzyController()
 
     # Define a search-and-surveillance flight path over the hotspots
@@ -604,10 +609,10 @@ def run_stage_patrol_simulation(stage_path: Path, steps: int = 12) -> List[Dict[
         proximity_factor = max(0.0, 1.0 - (min_dist / 12.0))
 
         # Ambient sensor synthesis
-        current_temp = min(50.0, base_temp + 16.0 * proximity_factor + random.uniform(-1.0, 1.5))
-        current_humidity = max(5.0, base_humidity - 32.0 * proximity_factor + random.uniform(-2.0, 2.0))
-        current_wind = min(95.0, base_wind + 20.0 * proximity_factor + random.uniform(-3.0, 4.0))
-        current_dryness = min(100.0, base_dryness + 50.0 * proximity_factor + random.uniform(-1.0, 2.0))
+        current_temp = min(50.0, base_temp + 16.0 * proximity_factor + rng.uniform(-1.0, 1.5))
+        current_humidity = max(5.0, base_humidity - 32.0 * proximity_factor + rng.uniform(-2.0, 2.0))
+        current_wind = min(95.0, base_wind + 20.0 * proximity_factor + rng.uniform(-3.0, 4.0))
+        current_dryness = min(100.0, base_dryness + 50.0 * proximity_factor + rng.uniform(-1.0, 2.0))
 
         outputs = controller.compute(
             temperature=current_temp,

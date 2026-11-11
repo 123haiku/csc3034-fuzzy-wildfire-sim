@@ -14,7 +14,7 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.util import Emu
 
-REPO = Path(r"C:\Users\pangw\.gemini\antigravity\scratch\csc3034-fuzzy-wildfire-sim")
+REPO = Path(__file__).resolve().parent.parent.parent
 PPTX = REPO / "docs" / "presentation" / "CSC3034_Presentation_Slides.pptx"
 PDF = REPO / "docs" / "presentation" / "CSC3034_Presentation_Slides.pdf"
 ASSETS = REPO / "docs" / "presentation" / "assets"

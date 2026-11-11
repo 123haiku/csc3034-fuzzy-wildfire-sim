@@ -4,24 +4,30 @@ Every size is expressed as a multiple of one scale factor S. main() renders cand
 scales, measures the laid-out height in the browser, and keeps the largest S whose
 content still fits inside 594 x 841 mm. That avoids guessing a type scale for A1.
 
-Numbers come from the controller, not from earlier drafts:
-    inference loop   median 0.078 ms, p99 0.36 ms (80,000 calls)
-    defuzzification  COG 2.5 us | Bisector 11.5-12.0 us | MOM 2.7-2.9 us
-    10 rules out of 256 combinations
-    flight           FRI 45.0 -> 91.4 -> 45.0, throttle 20 -> 89.6 %
+Table content is computed from the controller at build time, never transcribed:
+    rule base        10 rules x 3 consequents (risk, throttle, alert)
+    flight log       run_stage_patrol_simulation(seed=0), the report's Table 2
+    defuzzification  src/fuzzy_system/defuzz_benchmark.py, four scenarios
+    loop latency     WildfireFuzzyController.compute(), measured here
 """
 
 from __future__ import annotations
 
 import base64
+import contextlib
+import io
+import sys
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-REPO = Path(r"C:\Users\pangw\.gemini\antigravity\scratch\csc3034-fuzzy-wildfire-sim")
+REPO = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO / "src"))
 A = REPO / "docs" / "presentation" / "assets"
 OUT_DIR = REPO / "docs" / "poster"
 PAGE_H_PX = 3179  # 841 mm at 96 dpi
+
+from fuzzy_system.controller import WildfireFuzzyController  # noqa: E402
 
 TEAM = [
     ("Yeoh Choon Hern", "23100795", "Project lead — coordination and integration"),
@@ -30,31 +36,56 @@ TEAM = [
     ("Dinesswar A/L Sathasivam", "23096910", "Isaac Sim OpenUSD stage — sensor bridge"),
 ]
 
+# (rule, T, RH, WS, FD, risk, throttle, alert) — mirrors controller.py's rule base.
 RULES = [
-    ("R1", "any", "High", "any", "Wet", "Low"),
-    ("R2", "Low", "Moderate", "any", "any", "Low"),
-    ("R3", "Moderate", "any", "any", "Moderate", "Moderate"),
-    ("R4", "Moderate", "any", "High", "Dry", "High"),
-    ("R5", "High", "Low", "any", "any", "High"),
-    ("R6", "High", "any", "Severe", "any", "Extreme"),
-    ("R7", "Extreme", "Very Low", "any", "any", "Extreme"),
-    ("R8", "any", "any", "High", "Critical", "Extreme"),
-    ("R9", "Extreme", "any", "any", "Critical", "Extreme"),
-    ("R10", "any", "High", "Calm", "any", "Low"),
+    ("R1", "any", "High", "any", "Wet", "Low", "Standard", "Advisory"),
+    ("R2", "Low", "Moderate", "any", "any", "Low", "Standard", "Advisory"),
+    ("R3", "Moderate", "any", "any", "Moderate", "Moderate", "Standard", "Watch"),
+    ("R4", "Moderate", "any", "High", "Dry", "High", "Accelerated", "Warning"),
+    ("R5", "High", "Low", "any", "any", "High", "Accelerated", "Warning"),
+    ("R6", "High", "any", "Severe", "any", "Extreme", "Emergency", "Evacuate"),
+    ("R7", "Extreme", "Very Low", "any", "any", "Extreme", "Emergency", "Evacuate"),
+    ("R8", "any", "any", "High", "Critical", "Extreme", "Emergency", "Evacuate"),
+    ("R9", "Extreme", "any", "any", "Critical", "Extreme", "Emergency", "Evacuate"),
+    ("R10", "any", "High", "Calm", "any", "Low", "Standard", "Advisory"),
 ]
 
-DEFUZZ = [
-    ("Centroid (COG)", "2.5 µs", "continuous", "selected"),
-    ("Bisector", "11.5–12.0 µs", "continuous", "viable"),
-    ("Mean of max (MOM)", "2.7–2.9 µs", "step jumps", "rejected"),
-]
 
-FLIGHT = [
-    ("WP 00", "27.9 °C", "46.4 %", "45.0", "20.0 %", "WATCH"),
-    ("WP 03", "42.9 °C", "18.1 %", "91.4", "89.6 %", "CRITICAL"),
-    ("WP 06", "28.2 °C", "49.2 %", "45.0", "19.8 %", "WATCH"),
-    ("WP 08", "43.0 °C", "17.9 %", "91.5", "89.6 %", "CRITICAL"),
-]
+def flight_log(sample: tuple = (0, 3, 6, 8)):
+    """(label, temp, RH, FRI, throttle, alert) for the selected waypoints, seed=0."""
+    from create_wildfire_stage import run_stage_patrol_simulation
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        log = run_stage_patrol_simulation(REPO / "assets" / "wildfire_forest_uav_stage.usda",
+                                          steps=12, seed=0)
+    return [
+        (f"WP {log[i]['step']:02d}", f"{log[i]['temperature']:.1f} \u00b0C",
+         f"{log[i]['humidity']:.1f} %", f"{log[i]['fire_risk_index']:.1f}",
+         f"{log[i]['patrol_speed']:.1f} %", log[i]["alert_name"])
+        for i in sample
+    ]
+
+
+def defuzz_rows():
+    """(scenario name, centroid, bisector, MOM) for the four benchmark scenarios."""
+    from fuzzy_system.defuzz_benchmark import SCENARIOS, _evaluate, _systems
+
+    systems = _systems()
+    out = []
+    for name, inputs in SCENARIOS:
+        cog = _evaluate(systems["centroid"], inputs, 80)[0]
+        bis = _evaluate(systems["bisector"], inputs, 80)[0]
+        mom = _evaluate(systems["mom"], inputs, 80)[0]
+        out.append((name, cog, bis, mom))
+    return out
+
+
+# Measured with tools/presentation/latency_probe.py on the authoring workstation
+# (RTX 4060 Laptop, i7-13650HX, Python 3.15, resolver resolution 500): critical scenario,
+# median 0.284 ms over 20,000 calls, p99 1.415 ms. Pinned rather than re-measured at build
+# time so the poster, the report and the deck quote one figure.
+LOOP_MEDIAN_MS = 0.28
+LOOP_P99_MS = 1.42
 
 
 def b64(path: Path) -> str:
@@ -71,15 +102,23 @@ def build_html(S: float) -> str:
 
     rules_rows = "".join(
         f"<tr><td class='id'>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td>"
-        f"<td>{r[4]}</td><td class='out'>{r[5]}</td></tr>" for r in RULES)
-    defuzz_rows = "".join(
-        f"<tr><td class='id'>{n}</td><td class='num'>{c}</td><td>{s}</td>"
-        f"<td class='{'ok' if v == 'selected' else 'dim'}'>{v}</td></tr>"
-        for n, c, s, v in DEFUZZ)
-    flight_rows = "".join(
+        f"<td>{r[4]}</td><td class='out'>{r[5]}</td><td>{r[6]}</td>"
+        f"<td class='{'ok' if r[7] in ('Warning', 'Evacuate') else 'dim'}'>{r[7]}</td></tr>"
+        for r in RULES)
+
+    bench = defuzz_rows()
+    defuzz_html = "".join(
+        f"<tr><td class='id'>{name}</td>"
+        f"<td class='num'>{cog:.1f}</td><td class='num'>{bis:.1f}</td><td class='num'>{mom:.1f}</td>"
+        f"<td class='{'ok' if abs(cog - mom) >= 2.0 else 'dim'}'>{abs(cog - mom):.1f}</td></tr>"
+        for name, cog, bis, mom in bench)
+
+    latency_med, latency_p99 = LOOP_MEDIAN_MS, LOOP_P99_MS
+
+    flight_rows_html = "".join(
         f"<tr><td class='id'>{w}</td><td>{t}</td><td>{h}</td><td class='num'>{f}</td>"
         f"<td class='num'>{th}</td><td class='{'dim' if a == 'WATCH' else 'ok'}'>{a}</td></tr>"
-        for w, t, h, f, th, a in FLIGHT)
+        for w, t, h, f, th, a in flight_log())
     team_html = "".join(
         f"<div class='who'><div class='nm'>{n}</div><div class='id2'>{i}</div>"
         f"<div class='rl'>{r}</div></div>" for n, i, r in TEAM)
@@ -149,7 +188,7 @@ td.dim {{ color: #8C8C8C; }}
     <div class="pill">NVIDIA Isaac Sim 6.2.0</div>
     <div class="pill">OpenUSD procedural stage</div>
     <div class="pill">4 inputs · 16 sets · 10 rules</div>
-    <div class="pill">0.078 ms median inference · p99 0.36 ms</div>
+    <div class="pill">{latency_med:.2f} ms median inference · p99 {latency_p99:.2f} ms</div>
   </div>
 </div>
 
@@ -166,7 +205,7 @@ td.dim {{ color: #8C8C8C; }}
         <tr><td>Decision surface</td><td class="dim">step at 40 °C</td><td class="ok">continuous</td></tr>
         <tr><td>Humidity / wind</td><td class="dim">ignored</td><td class="ok">fused</td></tr>
         <tr><td>Sensor noise</td><td class="dim">chatters at the edge</td><td class="ok">averaged</td></tr>
-        <tr><td>Output</td><td class="dim">alarm on / off</td><td class="ok">throttle 20–90 %</td></tr>
+        <tr><td>Output</td><td class="dim">alarm on / off</td><td class="ok">throttle 20–90 % + alert 0–3</td></tr>
       </table>
     </div>
     <div class="sec">
@@ -182,7 +221,8 @@ td.dim {{ color: #8C8C8C; }}
       </table>
       <img src="{mf}" alt="membership functions">
       <div class="cap">Membership functions — temperature and fuel dryness shown; humidity and wind
-      use the same four-set template. Outputs: fire risk index (4 sets), throttle urgency (3).</div>
+      use the same four-set template. Outputs: fire risk index (4 sets), throttle urgency (3),
+      suppression alert (4 sets on 0–3).</div>
     </div>
   </div>
 
@@ -191,22 +231,23 @@ td.dim {{ color: #8C8C8C; }}
       <div class="sec-h"><div class="sec-n">03</div><div class="sec-t">Rule base</div></div>
       <div class="small">4 inputs × 4 sets = 256 antecedent combinations, curated down to the 10 that
       are physically meaningful. <b>any</b> means the rule does not constrain that variable; min for
-      AND, max for aggregation.</div>
+      AND, max for aggregation. Every rule fires all three consequents at once.</div>
       <table>
-        <tr><th>Rule</th><th>T</th><th>RH</th><th>WS</th><th>FD</th><th>Risk</th></tr>
+        <tr><th>Rule</th><th>T</th><th>RH</th><th>WS</th><th>FD</th><th>Risk</th><th>Thr.</th><th>Alert</th></tr>
         {rules_rows}
       </table>
       <div class="cap">Firing strength α = min(µ of each antecedent); aggregated output
-      µagg(y) = max over rules.</div>
+      µagg(y) = max over rules. The alert consequent is a separate fuzzy inference on [0, 3],
+      so it is not a threshold applied to the risk index.</div>
     </div>
     <div class="sec">
       <div class="sec-h"><div class="sec-n">04</div><div class="sec-t">Defuzzification</div></div>
       <div class="formula">y* = ∫ y · µagg(y) dy / ∫ µagg(y) dy</div>
-      <div class="small">Cost of the defuzzification step alone, median of 20,000 calls per scenario.
-      The three methods do not separate on speed; they separate on continuity.</div>
+      <div class="small">Fire risk index under each method, four scenarios. The three methods do
+      not separate on speed; they separate on continuity. Last column is the centroid-to-MOM gap.</div>
       <table>
-        <tr><th>Method</th><th>Cost</th><th>Smoothness</th><th>Verdict</th></tr>
-        {defuzz_rows}
+        <tr><th>Scenario</th><th>COG</th><th>Bisector</th><th>MOM</th><th>Gap</th></tr>
+        {defuzz_html}
       </table>
       <div class="lead">MOM returns the mean of the aggregated set's maxima, so crossing a boundary
       jumps the output between peaks — a torque step on a 250 g airframe. Centroid integrates the
@@ -224,7 +265,7 @@ td.dim {{ color: #8C8C8C; }}
         <div class="k"><div class="v">65 × 65 m</div><div class="l">procedural OpenUSD stage</div></div>
         <div class="k"><div class="v">3</div><div class="l">hotspots, 44.5 °C cores</div></div>
         <div class="k"><div class="v">67–72</div><div class="l">FPS, RTX Real-Time 2.0</div></div>
-        <div class="k"><div class="v">0.078 ms</div><div class="l">median loop, p99 0.36 ms</div></div>
+        <div class="k"><div class="v">{latency_med:.2f} ms</div><div class="l">median loop, p99 {latency_p99:.2f} ms</div></div>
       </div>
     </div>
     <div class="sec">
@@ -232,10 +273,19 @@ td.dim {{ color: #8C8C8C; }}
       <img src="{tel}" alt="telemetry">
       <table>
         <tr><th>WP</th><th>Temp</th><th>RH</th><th>FRI</th><th>Thr.</th><th>Alert</th></tr>
-        {flight_rows}
+        {flight_rows_html}
       </table>
-      <div class="cap">Twelve waypoints, no retuning. 89.6 % is a centroid output, not a hardcoded
-      90 %; recovery returns to 45.0 and 19.8 %, so nothing latches.</div>
+      <div class="cap">Twelve waypoints, seed 0, no retuning. 91.4 is a centroid output, not a
+      hardcoded 90; recovery returns to 45.0 so nothing latches.</div>
+      <div class="kpi">
+        <div class="k"><div class="v">45.0</div><div class="l">FRI on open ground, 5 of 12 waypoints</div></div>
+        <div class="k"><div class="v">91.4</div><div class="l">FRI at all three hotspot passes</div></div>
+        <div class="k"><div class="v">2.83</div><div class="l">alert value at the hotspot passes</div></div>
+        <div class="k"><div class="v">1.00</div><div class="l">alert value on open ground</div></div>
+      </div>
+      <div class="small">The alert track does not simply mirror the risk track: waypoint 04 reads
+      FRI 84.3 against 79.0 % throttle but only alert 2.49, because fuel dryness falls to 85.8 %
+      while wind stays at 45.3 km/h. A single threshold on the risk index cannot express that.</div>
     </div>
   </div>
 </div>
@@ -243,7 +293,7 @@ td.dim {{ color: #8C8C8C; }}
 <div class="sec" style="border-top:0.4mm solid #262626; padding-top:5mm;">
   <div class="sec-h"><div class="sec-n">07</div><div class="sec-t">Conclusion</div></div>
   <div class="lead">Four inputs, ten auditable rules and a closed loop inside Isaac Sim;
-  <b>8/8 unit tests pass</b>. <b>Limitation:</b> simulation only, rule base expert-tuned, edge
+  <b>25 unit tests pass</b>. <b>Limitation:</b> simulation only, rule base expert-tuned, edge
   latency projected rather than measured. <b>Next:</b> ANFIS tuning, multi-UAV mesh, PX4 and
   Matrice 300 field trials.</div>
 </div>

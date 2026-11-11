@@ -1,4 +1,4 @@
-﻿"""Slide figures in NVIDIA black/green at *literal display size*.
+"""Slide figures in NVIDIA black/green at *literal display size*.
 
 Previous versions were drawn on a 12-14 inch canvas and shrunk into a 6-7 inch frame,
 which scales every label down by ~0.5. These are drawn at the size they are placed at,
@@ -16,7 +16,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
-REPO = Path(r"C:\Users\pangw\.gemini\antigravity\scratch\csc3034-fuzzy-wildfire-sim")
+REPO = Path(__file__).resolve().parent.parent.parent
 OUT = REPO / "docs" / "presentation" / "assets"
 sys.path.insert(0, str(REPO / "src"))
 
@@ -68,23 +68,36 @@ def membership() -> Path:
     from fuzzy_system.controller import WildfireFuzzyController
 
     c = WildfireFuzzyController()
-    fig, axes = plt.subplots(2, 2, figsize=(6.8, 5.0))
+    fig, axes = plt.subplots(3, 2, figsize=(6.8, 7.0))
 
     panels = [
         (axes[0, 0], c.x_temp, c.mf_temp, "Temperature (input)", "deg C"),
         (axes[0, 1], c.x_fuel, c.mf_fuel, "Fuel dryness (input)", "%"),
-        (axes[1, 0], c.x_risk, c.mf_risk, "Fire risk index (output)", "0-100"),
-        (axes[1, 1], c.x_speed, c.mf_speed, "Throttle urgency (output)", "%"),
+        (axes[1, 0], c.x_risk, c.mf_risk, "Fire risk index (output 1)", "risk index"),
+        (axes[1, 1], c.x_speed, c.mf_speed, "Throttle urgency (output 2)", "%"),
+        (axes[2, 0], c.x_alert, c.mf_alert, "Suppression alert (output 3)", "level 0-3"),
     ]
     for ax, x, mfs, title, unit in panels:
         for (color, ls, lw), (name, mf) in zip(SERIES, mfs.items()):
             ax.plot(x, mf, color=color, linestyle=ls, linewidth=lw,
                     label=name.replace("_", " ").capitalize())
-        frame(ax, title, "risk index" if "risk" in title else unit, "degree of membership")
+        frame(ax, title, unit, "degree of membership")
         ax.set_ylim(-0.05, 1.14)
         ax.set_yticks([0, 0.5, 1.0])
+    axes[2, 0].set_xlim(0, 3)
+    axes[2, 0].set_xticks([0, 1, 2, 3])
 
-    fig.tight_layout(pad=0.45, w_pad=2.6, h_pad=1.1)
+    # Sixth panel: the three output universes summarised as text, keeping the grid solid.
+    ax = axes[2, 1]
+    ax.axis("off")
+    ax.set_title("Three defuzzified outputs", color=TXT, fontsize=9.5, fontweight="bold", pad=5)
+    ax.text(0.0, 0.86, "risk     0-100   4 sets   centroid", color=MUTED, fontsize=7.4, family="monospace")
+    ax.text(0.0, 0.66, "throttle 0-100%  3 sets   centroid", color=MUTED, fontsize=7.4, family="monospace")
+    ax.text(0.0, 0.46, "alert    0-3     4 sets   centroid", color=GREEN, fontsize=7.4, family="monospace")
+    ax.text(0.0, 0.18, "Each rule fires one term\nin all three universes.",
+            color=TXT, fontsize=7.6, va="top", linespacing=1.5)
+
+    fig.tight_layout(pad=0.45, w_pad=2.6, h_pad=1.0)
     dst = OUT / "membership_nvidia.png"
     fig.savefig(dst, dpi=DPI, bbox_inches="tight", pad_inches=0.06)
     plt.close(fig)
@@ -95,7 +108,7 @@ def membership() -> Path:
 def telemetry() -> Path:
     from create_wildfire_stage import run_stage_patrol_simulation
 
-    data = run_stage_patrol_simulation(REPO / "assets" / "wildfire_forest_uav_stage.usda", steps=12)
+    data = run_stage_patrol_simulation(REPO / "assets" / "wildfire_forest_uav_stage.usda", steps=12, seed=0)
     g = lambda k: [d[k] for d in data]
     steps, fri, spd, alerts = g("step"), g("fire_risk_index"), g("patrol_speed"), g("alert_name")
 

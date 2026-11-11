@@ -59,3 +59,7 @@ plots/*.svg
 
 # Superseded deck generations and one-off repair scripts (kept on disk, not in history)
 docs/presentation/_archive/
+
+# Local scratch output from build and inspection runs
+.tmp_*
+*.tmp

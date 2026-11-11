@@ -45,6 +45,76 @@ from .controller import WildfireFuzzyController
 RuleWeight = Tuple[Tuple[str, str], ...]
 
 
+def build_variables(risk_method: str = "centroid"):
+    """Builds the four antecedents and three consequents with the model's membership sets.
+
+    `risk_method` selects the defuzzification method of the fire risk consequent only,
+    which is what the defuzzification benchmark varies.
+    """
+    temp = ctrl.Antecedent(np.linspace(0, 50, 500), "temperature")
+    hum = ctrl.Antecedent(np.linspace(0, 100, 500), "humidity")
+    wind = ctrl.Antecedent(np.linspace(0, 100, 500), "wind_speed")
+    fuel = ctrl.Antecedent(np.linspace(0, 100, 500), "vegetation_dryness")
+
+    risk = ctrl.Consequent(np.linspace(0, 100, 500), "fire_risk_index", defuzzify_method=risk_method)
+    speed = ctrl.Consequent(np.linspace(0, 100, 500), "patrol_urgency_speed", defuzzify_method="centroid")
+    alert = ctrl.Consequent(np.linspace(0, 3, 500), "suppression_alert", defuzzify_method="centroid")
+
+    temp["low"] = fuzz.trapmf(temp.universe, (0, 0, 15, 22))
+    temp["moderate"] = fuzz.trimf(temp.universe, (18, 26, 34))
+    temp["high"] = fuzz.trimf(temp.universe, (30, 38, 44))
+    temp["extreme"] = fuzz.trapmf(temp.universe, (40, 45, 50, 50))
+
+    hum["very_low"] = fuzz.trapmf(hum.universe, (0, 0, 15, 25))
+    hum["low"] = fuzz.trimf(hum.universe, (20, 35, 50))
+    hum["moderate"] = fuzz.trimf(hum.universe, (40, 60, 75))
+    hum["high"] = fuzz.trapmf(hum.universe, (70, 85, 100, 100))
+
+    wind["calm"] = fuzz.trapmf(wind.universe, (0, 0, 10, 20))
+    wind["moderate"] = fuzz.trimf(wind.universe, (15, 30, 45))
+    wind["high"] = fuzz.trimf(wind.universe, (40, 60, 75))
+    wind["severe"] = fuzz.trapmf(wind.universe, (70, 85, 100, 100))
+
+    fuel["wet"] = fuzz.trapmf(fuel.universe, (0, 0, 20, 35))
+    fuel["moderate"] = fuzz.trimf(fuel.universe, (30, 50, 70))
+    fuel["dry"] = fuzz.trimf(fuel.universe, (65, 80, 90))
+    fuel["critical"] = fuzz.trapmf(fuel.universe, (85, 95, 100, 100))
+
+    risk["low"] = fuzz.trapmf(risk.universe, (0, 0, 20, 35))
+    risk["moderate"] = fuzz.trimf(risk.universe, (25, 45, 65))
+    risk["high"] = fuzz.trimf(risk.universe, (55, 75, 85))
+    risk["extreme"] = fuzz.trapmf(risk.universe, (80, 90, 100, 100))
+
+    speed["standard"] = fuzz.trapmf(speed.universe, (0, 0, 25, 45))
+    speed["accelerated"] = fuzz.trimf(speed.universe, (40, 60, 80))
+    speed["emergency"] = fuzz.trapmf(speed.universe, (75, 90, 100, 100))
+
+    alert["advisory"] = fuzz.trapmf(alert.universe, (0, 0, 0, 0.6))
+    alert["watch"] = fuzz.trimf(alert.universe, (0.4, 1, 1.6))
+    alert["warning"] = fuzz.trimf(alert.universe, (1.4, 2, 2.6))
+    alert["evacuate"] = fuzz.trapmf(alert.universe, (2.4, 3, 3, 3))
+
+    return {"temp": temp, "hum": hum, "wind": wind, "fuel": fuel}, risk, speed, alert
+
+
+def build_rules(variables, risk, speed, alert):
+    """Returns the ten Rule objects binding each antecedent to a consequence triple."""
+    temp, hum, wind, fuel = variables["temp"], variables["hum"], variables["wind"], variables["fuel"]
+    triples = [
+        (hum["high"] & fuel["wet"], risk["low"], speed["standard"], alert["advisory"]),
+        (temp["low"] & hum["moderate"], risk["low"], speed["standard"], alert["advisory"]),
+        (temp["moderate"] & fuel["moderate"], risk["moderate"], speed["standard"], alert["watch"]),
+        (temp["moderate"] & wind["high"] & fuel["dry"], risk["high"], speed["accelerated"], alert["warning"]),
+        (temp["high"] & hum["low"], risk["high"], speed["accelerated"], alert["warning"]),
+        (temp["high"] & wind["severe"], risk["extreme"], speed["emergency"], alert["evacuate"]),
+        (temp["extreme"] & hum["very_low"], risk["extreme"], speed["emergency"], alert["evacuate"]),
+        (fuel["critical"] & wind["high"], risk["extreme"], speed["emergency"], alert["evacuate"]),
+        (temp["extreme"] & fuel["critical"], risk["extreme"], speed["emergency"], alert["evacuate"]),
+        (wind["calm"] & hum["high"], risk["low"], speed["standard"], alert["advisory"]),
+    ]
+    return [ctrl.Rule(a, [r, s, al]) for a, r, s, al in triples]
+
+
 class SkfuzzyReferenceEngine:
     """Same model expressed through scikit-fuzzy's ControlSystemSimulation."""
 
@@ -52,63 +122,10 @@ class SkfuzzyReferenceEngine:
         if not SKFUZZY_AVAILABLE:
             raise RuntimeError("scikit-fuzzy is not installed; install requirements.txt")
 
-        temp = ctrl.Antecedent(np.linspace(0, 50, 500), "temperature")
-        hum = ctrl.Antecedent(np.linspace(0, 100, 500), "humidity")
-        wind = ctrl.Antecedent(np.linspace(0, 100, 500), "wind_speed")
-        fuel = ctrl.Antecedent(np.linspace(0, 100, 500), "vegetation_dryness")
+        variables, risk, speed, alert = build_variables()
+        rules = build_rules(variables, risk, speed, alert)
 
-        risk = ctrl.Consequent(np.linspace(0, 100, 500), "fire_risk_index", defuzzify_method="centroid")
-        speed = ctrl.Consequent(np.linspace(0, 100, 500), "patrol_urgency_speed", defuzzify_method="centroid")
-        alert = ctrl.Consequent(np.linspace(0, 3, 500), "suppression_alert", defuzzify_method="centroid")
-
-        temp["low"] = fuzz.trapmf(temp.universe, (0, 0, 15, 22))
-        temp["moderate"] = fuzz.trimf(temp.universe, (18, 26, 34))
-        temp["high"] = fuzz.trimf(temp.universe, (30, 38, 44))
-        temp["extreme"] = fuzz.trapmf(temp.universe, (40, 45, 50, 50))
-
-        hum["very_low"] = fuzz.trapmf(hum.universe, (0, 0, 15, 25))
-        hum["low"] = fuzz.trimf(hum.universe, (20, 35, 50))
-        hum["moderate"] = fuzz.trimf(hum.universe, (40, 60, 75))
-        hum["high"] = fuzz.trapmf(hum.universe, (70, 85, 100, 100))
-
-        wind["calm"] = fuzz.trapmf(wind.universe, (0, 0, 10, 20))
-        wind["moderate"] = fuzz.trimf(wind.universe, (15, 30, 45))
-        wind["high"] = fuzz.trimf(wind.universe, (40, 60, 75))
-        wind["severe"] = fuzz.trapmf(wind.universe, (70, 85, 100, 100))
-
-        fuel["wet"] = fuzz.trapmf(fuel.universe, (0, 0, 20, 35))
-        fuel["moderate"] = fuzz.trimf(fuel.universe, (30, 50, 70))
-        fuel["dry"] = fuzz.trimf(fuel.universe, (65, 80, 90))
-        fuel["critical"] = fuzz.trapmf(fuel.universe, (85, 95, 100, 100))
-
-        risk["low"] = fuzz.trapmf(risk.universe, (0, 0, 20, 35))
-        risk["moderate"] = fuzz.trimf(risk.universe, (25, 45, 65))
-        risk["high"] = fuzz.trimf(risk.universe, (55, 75, 85))
-        risk["extreme"] = fuzz.trapmf(risk.universe, (80, 90, 100, 100))
-
-        speed["standard"] = fuzz.trapmf(speed.universe, (0, 0, 25, 45))
-        speed["accelerated"] = fuzz.trimf(speed.universe, (40, 60, 80))
-        speed["emergency"] = fuzz.trapmf(speed.universe, (75, 90, 100, 100))
-
-        alert["advisory"] = fuzz.trapmf(alert.universe, (0, 0, 0, 0.6))
-        alert["watch"] = fuzz.trimf(alert.universe, (0.4, 1, 1.6))
-        alert["warning"] = fuzz.trimf(alert.universe, (1.4, 2, 2.6))
-        alert["evacuate"] = fuzz.trapmf(alert.universe, (2.4, 3, 3, 3))
-
-        rules = [
-            (hum["high"] & fuel["wet"], risk["low"], speed["standard"], alert["advisory"]),
-            (temp["low"] & hum["moderate"], risk["low"], speed["standard"], alert["advisory"]),
-            (temp["moderate"] & fuel["moderate"], risk["moderate"], speed["standard"], alert["watch"]),
-            (temp["moderate"] & wind["high"] & fuel["dry"], risk["high"], speed["accelerated"], alert["warning"]),
-            (temp["high"] & hum["low"], risk["high"], speed["accelerated"], alert["warning"]),
-            (temp["high"] & wind["severe"], risk["extreme"], speed["emergency"], alert["evacuate"]),
-            (temp["extreme"] & hum["very_low"], risk["extreme"], speed["emergency"], alert["evacuate"]),
-            (fuel["critical"] & wind["high"], risk["extreme"], speed["emergency"], alert["evacuate"]),
-            (temp["extreme"] & fuel["critical"], risk["extreme"], speed["emergency"], alert["evacuate"]),
-            (wind["calm"] & hum["high"], risk["low"], speed["standard"], alert["advisory"]),
-        ]
-
-        self.system = ctrl.ControlSystem([ctrl.Rule(a, [r, s, al]) for a, r, s, al in rules])
+        self.system = ctrl.ControlSystem(rules)
         self.sim = ctrl.ControlSystemSimulation(self.system)
 
     def compute(self, temperature: float, humidity: float, wind_speed: float,

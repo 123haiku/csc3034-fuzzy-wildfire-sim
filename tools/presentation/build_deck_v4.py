@@ -22,7 +22,7 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
-REPO = Path(r"C:\Users\pangw\.gemini\antigravity\scratch\csc3034-fuzzy-wildfire-sim")
+REPO = Path(__file__).resolve().parent.parent.parent
 PRES = REPO / "docs" / "presentation"
 ASSETS = PRES / "assets"
 DST = PRES / "CSC3034_Presentation_Slides.pptx"   # canonical deliverable; v4 is the current generation
@@ -141,9 +141,13 @@ def stats(slide, y, items, num_sz=30, label_sz=9.5):
             rule_v(slide, x - 0.28, y + 0.04, 1.12)
 
 
-def pic(slide, path, x, y, w, caption=None, cap_sz=9.5):
-    p = slide.shapes.add_picture(str(path), Inches(x), Inches(y), width=Inches(w))
+def pic(slide, path, x, y, w, caption=None, cap_sz=9.5, h=None):
+    if h is not None:
+        p = slide.shapes.add_picture(str(path), Inches(x), Inches(y), height=Inches(h))
+    else:
+        p = slide.shapes.add_picture(str(path), Inches(x), Inches(y), width=Inches(w))
     h = p.height / 914400
+    w = p.width / 914400
     if caption:
         text(slide, x, y + h + 0.12, w, 0.28, [(caption, cap_sz, DIM, False)])
     return h
@@ -218,8 +222,8 @@ stages = [
     ("01", "Synthetic sensing", "Four probes on the OpenUSD stage, sampled at 60 Hz."),
     ("02", "Fuzzification", "16 input sets, four per variable, triangular and trapezoidal."),
     ("03", "Fuzzy inference", "10 expert rules; min for AND, max for aggregation."),
-    ("04", "Defuzzification", "Centroid of area; continuous output, 0.078 ms median per loop."),
-    ("05", "Actuation and alert", "Throttle 20-90 %; alert WATCH, WARNING or CRITICAL."),
+    ("04", "Defuzzification", "Centroid of area; continuous output, 0.28 ms median per loop."),
+    ("05", "Actuation and alert", "Throttle 20-90 %; alert 0-3 as a third fuzzy output."),
 ]
 cell = (W - 4 * 0.36) / 5
 for i, (num, title, body) in enumerate(stages):
@@ -232,8 +236,8 @@ for i, (num, title, body) in enumerate(stages):
 rule_h(s, L, 4.92, W)
 stats(s, 5.12, [
     ("60 Hz", "sensor tick from the Isaac Sim stage"),
-    ("0.078 ms", "median per loop, p99 0.36 ms"),
-    ("0.14 %", "of the 50 ms control budget"),
+    ("0.28 ms", "median per loop, p99 1.42 ms"),
+    ("0.6 %", "of the 50 ms control budget"),
 ])
 
 # ------------------------------------------------------------------------ 04
@@ -247,27 +251,29 @@ specs = [
     ("Wind speed (WS)", "0 - 100 km/h   calm · moderate · high · severe"),
     ("Fuel dryness (FD)", "0 - 100 %   wet · moderate · dry · critical"),
 ]
-y = TOP + 0.34
+y = TOP + 0.30
 for name, detail in specs:
     text(s, L, y, 5.0, 0.24, [(name, 12, INK, True)])
-    text(s, L, y + 0.26, 5.0, 0.24, [(detail, 10.5, DIM, False)])
-    y += 0.62
-    rule_h(s, L, y - 0.10, 5.0)
-y += 0.18
+    text(s, L, y + 0.24, 5.0, 0.24, [(detail, 10.5, DIM, False)])
+    y += 0.52
+    rule_h(s, L, y - 0.08, 5.0)
+y += 0.14
 text(s, L, y, 5.0, 0.24, [("OUTPUTS", 9.5, GREEN, True)])
-y += 0.34
+y += 0.30
 for name, detail in [
     ("Fire risk index (FRI)", "0 - 100   low · moderate · high · extreme"),
     ("Throttle urgency", "0 - 100 %   standard · accelerated · emergency"),
+    ("Suppression alert", "0 - 3   advisory · watch · warning · evacuate"),
 ]:
     text(s, L, y, 5.0, 0.24, [(name, 12, INK, True)])
-    text(s, L, y + 0.26, 5.0, 0.24, [(detail, 10.5, DIM, False)])
-    y += 0.62
-    rule_h(s, L, y - 0.10, 5.0)
-text(s, L, y + 0.10, 5.0, 0.6,
-     [("Trapezoids close the outermost sets, so readings past the sensor range saturate instead of running off the universe.", 10, DIM, False)])
-pic(s, ASSETS / "membership_nvidia.png", 6.30, TOP + 0.14, 6.28,
-    "Temperature and fuel dryness shown; humidity and wind use the same four-set template.")
+    text(s, L, y + 0.24, 5.0, 0.24, [(detail, 10.5, DIM, False)])
+    y += 0.52
+    rule_h(s, L, y - 0.08, 5.0)
+text(s, L, y + 0.08, 5.0, 0.6,
+     [("Trapezoids close the outermost sets, so readings past the sensor range saturate instead of running off the universe. Each rule fires one term in all three universes.", 10, DIM, False)])
+pic(s, ASSETS / "membership_nvidia.png", 6.55, TOP + 0.02, 6.0, h=4.68,
+    caption="Temperature and fuel dryness shown; humidity and wind use the same four-set template. "
+            "Output 3 adds the alert consequent.")
 
 # ------------------------------------------------------------------------ 05
 s = prs.slides.add_slide(BLANK)
@@ -276,30 +282,32 @@ head(s, "Knowledge base", "Ten curated rules out of 256 combinations", 5)
 
 hdr_y = TOP + 0.04
 text(s, L, hdr_y, 1.5, 0.24, [("RULE", 8.5, GREEN, True)])
-text(s, 2.30, hdr_y, 5.3, 0.24, [("ANTECEDENT", 8.5, GREEN, True)])
-text(s, 7.80, hdr_y, 1.75, 0.24, [("FIRE RISK", 8.5, GREEN, True)], align=PP_ALIGN.RIGHT)
-text(s, 9.85, hdr_y, 2.7, 0.24, [("THROTTLE", 8.5, GREEN, True)], align=PP_ALIGN.RIGHT)
+text(s, 2.10, hdr_y, 4.85, 0.24, [("ANTECEDENT", 8.5, GREEN, True)])
+text(s, 6.95, hdr_y, 1.35, 0.24, [("FIRE RISK", 8.5, GREEN, True)], align=PP_ALIGN.RIGHT)
+text(s, 8.45, hdr_y, 1.55, 0.24, [("THROTTLE", 8.5, GREEN, True)], align=PP_ALIGN.RIGHT)
+text(s, 10.10, hdr_y, 2.45, 0.24, [("ALERT (0-3)", 8.5, GREEN, True)], align=PP_ALIGN.RIGHT)
 rule_h(s, L, hdr_y + 0.28, W, RULE, 1.0)
 
 rules = [
-    ("R09 · R07", "Temperature extreme AND (fuel critical OR humidity very low)", "92", "90 %"),
-    ("R04", "Temperature moderate AND wind high AND fuel dry", "71", "60 %"),
-    ("R03", "Temperature moderate AND fuel moderate", "45", "20 %"),
-    ("R01 · R10", "Humidity high AND (fuel wet OR wind calm)", "20", "20 %"),
+    ("R09 · R07", "Temperature extreme AND (fuel critical OR humidity very low)", "92", "90 %", "2.87"),
+    ("R04", "Temperature moderate AND wind high AND fuel dry", "71", "60 %", "2.00"),
+    ("R03", "Temperature moderate AND fuel moderate", "45", "20 %", "1.00"),
+    ("R01 · R10", "Humidity high AND (fuel wet OR wind calm)", "20", "20 %", "1.00"),
 ]
 y = hdr_y + 0.46
-for tag, ante, fri, thr in rules:
+for tag, ante, fri, thr, alt in rules:
     text(s, L, y + 0.10, 1.5, 0.26, [(tag, 11, GREEN, True)])
-    text(s, 2.30, y + 0.08, 5.3, 0.5, [(ante, 12, INK, False)])
-    text(s, 7.80, y + 0.04, 1.75, 0.4, [(fri, 18, INK, True)], align=PP_ALIGN.RIGHT)
-    text(s, 9.85, y + 0.08, 2.7, 0.4, [(thr, 16, DIM, True)], align=PP_ALIGN.RIGHT)
+    text(s, 2.10, y + 0.08, 4.85, 0.5, [(ante, 12, INK, False)])
+    text(s, 6.95, y + 0.04, 1.35, 0.4, [(fri, 18, INK, True)], align=PP_ALIGN.RIGHT)
+    text(s, 8.45, y + 0.08, 1.55, 0.4, [(thr, 16, DIM, True)], align=PP_ALIGN.RIGHT)
+    text(s, 10.10, y + 0.08, 2.45, 0.4, [(alt, 16, GREEN, True)], align=PP_ALIGN.RIGHT)
     y += 0.78
     rule_h(s, L, y - 0.10, W)
 
 text(s, L, y + 0.22, W, 0.9,
      [("4 inputs × 4 sets = 256 antecedent combinations, curated down to the 10 that are physically meaningful. ", 11, DIM, False),
       ("Mamdani: min for AND, max for aggregation, centroid for defuzzification.", 11, INK, False),
-      ("Cost: 0.07 ms per loop on the workstation.", 11, DIM, False)])
+      ("Cost: 0.28 ms per loop on the workstation; each rule fires all three consequents.", 11, DIM, False)])
 
 # ------------------------------------------------------------------------ 06
 s = prs.slides.add_slide(BLANK)
@@ -324,10 +332,10 @@ head(s, "Flight results", "Twelve waypoints, closed loop, no retuning", 7)
 pic(s, ASSETS / "telemetry_nvidia.png", L, TOP + 0.10, 7.00)
 text(s, 8.30, TOP, 4.28, 0.24, [("WHAT THE RUN SHOWS", 9.5, GREEN, True)])
 obs = [
-    ("Baseline, WP 00-01", "27.9 °C, RH 46.4 %. FRI 45.0 holds at WATCH, throttle 20 %."),
-    ("Hotspot entry, WP 03", "42.9 °C, RH 18.1 %, fuel 87.4 %. FRI 91.4, throttle 89.6 %."),
-    ("Second plume, WP 08", "43.0 °C, RH 17.9 %. FRI 91.5 — same response, no retuning."),
-    ("Recovery, WP 06", "28.2 °C, RH 49.2 %. FRI returns to 45.0, throttle 19.8 %."),
+    ("Baseline, WP 00-01", "29.1 °C, RH 49.0 %. FRI 45.0 holds at WATCH, throttle 20.1 %, alert 1.000."),
+    ("Hotspot entry, WP 03", "42.8 °C, RH 18.9 %, fuel 86.8 %. FRI 91.4, throttle 89.5 %, alert 2.826."),
+    ("Second plume, WP 08", "42.9 °C, RH 18.7 %. FRI 91.4, alert 2.829 — same response, no retuning."),
+    ("Recovery, WP 06", "28.2 °C, RH 46.4 %. FRI returns to 45.0, throttle 19.9 %, alert 1.000."),
 ]
 y = TOP + 0.36
 for lead, body in obs:
@@ -335,7 +343,7 @@ for lead, body in obs:
     text(s, 8.30, y + 0.26, 4.28, 0.75, [(body, 10.2, DIM, False)])
     y += 1.14
 text(s, 8.30, y - 0.06, 4.28, 0.5,
-     [("Numbers are the printed output of the 12-waypoint simulation, reproducible from the repository.", 9, DIM, False)])
+     [("Numbers are the printed output of run_stage_patrol_simulation(seed=0), reproducible from the repository.", 9, DIM, False)])
 
 # ------------------------------------------------------------------------ 08
 s = prs.slides.add_slide(BLANK)
@@ -344,10 +352,10 @@ head(s, "Design decision", "Why centroid, when all three are this cheap", 8)
 
 cols = [2.50, 1.60, 2.95, 1.45, 2.55]
 rows = [
-    ("Method", "Defuzz cost", "Actuator smoothness", "Noise", "Flight suitability"),
-    ("Centroid (COG)", "2.5 us", "continuous", "high", "selected"),
-    ("Bisector", "11.8 us", "good", "moderate", "viable"),
-    ("Mean of max (MOM)", "2.8 us", "step jumps", "low", "unsafe"),
+    ("Method", "Critical FRI", "Actuator smoothness", "Noise", "Flight suitability"),
+    ("Centroid (COG)", "92.2", "continuous", "high", "selected"),
+    ("Bisector", "92.5", "good", "moderate", "viable"),
+    ("Mean of max (MOM)", "95.1", "step jumps", "low", "unsafe"),
 ]
 tbl_y = TOP + 0.10
 shape = s.shapes.add_table(len(rows), 5, Inches(L), Inches(tbl_y), Inches(sum(cols)), Inches(0.52 * len(rows)))
@@ -396,14 +404,14 @@ for i in range(len(rows) + 1):
 pairs(s, L, 4.62, 5.55, fill_to=6.40, items=[
     ("Continuity, not speed.",
      "Centroid integrates the whole aggregated area, so a small input change produces a small output change. On a 250 g airframe that is the difference between smooth thrust and torque steps."),
-    ("2.5 us against a 50 ms budget.",
-     "Defuzzification is 0.005 % of the loop, so none of the three methods is expensive. MOM is not faster here: it costs 2.8 us."),
+    ("All three are cheap.",
+     "A full evaluation loop is 0.28 ms, so none of the methods is the bottleneck. They differ only in the 2.9-point gap MOM shows at the critical scenario."),
 ])
 pairs(s, RX, 4.62, 5.55, fill_to=6.40, items=[
     ("MOM jumps between peaks.",
-     "Mean of maxima returns the average of the aggregated set's maxima, so as the input crosses a boundary the output leaps to the next peak."),
-    ("Bisector is a compromise.",
-     "Smooth enough, but five times the cost of centroid (11.8 us against 2.5 us) for no change in the flight logs."),
+     "Mean of maxima returns the average of the aggregated set's maxima, so as the input crosses a boundary the output leaps to the next peak: 95.1 against 92.2."),
+    ("Bisector is the compromise.",
+     "Smooth and within 0.3 points of centroid on every scenario, but no better on the flight logs, so the simpler method wins."),
 ])
 
 # ------------------------------------------------------------------------ 09
@@ -415,7 +423,7 @@ text(s, L, TOP, CW, 0.24, [("EDGE STACK", 9.5, GREEN, True)])
 text(s, RX, TOP, CW, 0.24, [("WHY IT MATTERS", 9.5, GREEN, True)])
 pairs(s, L, TOP + 0.36, CW, [
     ("Jetson Orin Nano, 8 GB.", "7-15 W envelope, inside a micro-UAV battery budget."),
-    ("0.078 ms inference.", "median per loop; 0.16 % of the 50 ms budget."),
+    ("0.28 ms inference.", "median per loop; 0.6 % of the 50 ms budget."),
     ("Sensors already proven.", "FLIR Lepton 3.5 LWIR for the plume, Sensirion SHT40 for temperature and humidity."),
     ("LoRa backhaul.", "Carries the GPS fix of a confirmed hotspot to the ground crew."),
 ], lead_sz=12, body_sz=10.5, fill_to=6.55)
@@ -437,7 +445,7 @@ pairs(s, L, TOP + 0.36, CW, [
     ("Fuzzy engine.", "Four inputs, ten rules, verified against the report's test vectors."),
     ("Digital twin.", "65 m procedural forest holding 67-72 FPS in real-time ray tracing."),
     ("Closed-loop actuation.", "20 % to 90 % throttle demonstrated over a live hotspot."),
-    ("Edge speed.", "0.078 ms median per loop, p99 0.36 ms; edge figure projected, not measured."),
+    ("Edge speed.", "0.28 ms median per loop, p99 1.42 ms; edge figure projected, not measured."),
 ], lead_sz=12, body_sz=10.5, fill_to=6.10)
 pairs(s, RX, TOP + 0.36, CW, [
     ("ANFIS.", "Replace hand-tuned memberships with functions fitted to satellite burn history."),

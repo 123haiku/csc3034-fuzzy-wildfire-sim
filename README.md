@@ -111,19 +111,19 @@ csc3034-fuzzy-wildfire-sim/
 │   │   ├── __init__.py
 │   │   ├── controller.py          # Core Mamdani Fuzzy Inference Engine (3 outputs)
 │   │   ├── isaac_sim_bridge.py    # Interface bridge for NVIDIA Isaac Sim / Action Graph
-│   │   └── reference_engine.py    # scikit-fuzzy cross-check of the hand-written engine
+│   │   ├── reference_engine.py    # scikit-fuzzy cross-check of the hand-written engine
+│   │   └── defuzz_benchmark.py    # centroid / bisector / MOM benchmark, report Table 3
 │   ├── create_wildfire_stage.py   # Procedurally builds the USD twin and runs the patrol
 │   ├── run_demo.py                # Interactive CLI demo to test fuzzy inference
 │   ├── visualize_membership.py    # Membership plots for the report and A1 poster
 │   ├── visualize_mission_telemetry.py  # Waypoint telemetry dashboard
-│   ├── export_report_docx.py      # Builds the final report DOCX
-│   └── generate_poster_html.py    # Builds the A1 poster HTML
+│   └── export_report_docx.py      # Builds the final report DOCX from REPORT_TEMPLATE.md
 ├── tests/
 │   ├── __init__.py
 │   ├── test_fuzzy_controller.py   # Unit tests: scenarios, boundaries, alert consequent
 │   └── test_reference_engine.py   # Engine vs scikit-fuzzy agreement per scenario
 ├── tools/
-│   └── presentation/              # Deck build pipeline (figures → pptx → pdf) + verifier
+│   └── presentation/              # Poster + deck build pipeline (figures → pptx/pdf/poster)
 │       ├── README.md              # Rebuild commands and layout conventions
 │       ├── nvidia_plots.py        # Regenerates the deck figures in the NVIDIA palette
 │       ├── crop_viewport.py       # Cuts Isaac Sim window chrome off the raw captures
@@ -132,24 +132,27 @@ csc3034-fuzzy-wildfire-sim/
 │       ├── deck_notes.py          # Speaker notes, one block per slide
 │       └── verify_deck.py         # Assertion-based check of the .pptx and .pdf
 └── docs/
+    ├── SUBMISSION.md                          # What is handed in, and how to rebuild it
     ├── presentation/
     │   ├── CSC3034_Presentation_Slides.pptx  # 11-slide deck, notes on every slide
     │   ├── CSC3034_Presentation_Slides.pdf   # Same deck as PDF
-    │   ├── assets/                           # Figures the deck embeds
+    │   ├── assets/                           # Cropped Isaac captures + deck figures
     │   └── _archive/                         # Superseded generations (gitignored)
     ├── proposal/
-    │   ├── CSC3034_Group_Proposal_Form.md   # Project proposal submission template
-    │   └── CSC3034_Group_Proposal_Form.docx # Same, as submitted
+    │   ├── CSC3034_Group_Proposal_Form.md    # Project proposal form
+    │   └── CSC3034_Group_Proposal_Form.docx  # Same, as a Word document
     ├── report/
-    │   ├── REPORT_TEMPLATE.md               # 10-page report template (LaTeX/Markdown)
-    │   ├── CSC3034_Project_Report_Template.docx
+    │   ├── REPORT_TEMPLATE.md               # Report source (Markdown)
     │   ├── CSC3034_Final_Report.docx        # Final submission
     │   └── CSC3034_Final_Report.pdf         # Final submission, PDF export
-    └── poster/
-        ├── POSTER_GUIDE.md                  # A1 infographic design guidelines
-        ├── CSC3034_A1_Poster.html           # Generated poster source
-        ├── CSC3034_A1_Poster.pdf            # A1 print-ready PDF
-        └── CSC3034_A1_Poster_300DPI.png     # 300 DPI raster for print
+    ├── poster/
+    │   ├── POSTER_GUIDE.md                  # A1 infographic design guidelines
+    │   ├── assets/                          # Raw Isaac captures + poster-sized figures
+    │   ├── CSC3034_A1_Poster.html           # Generated poster source
+    │   ├── CSC3034_A1_Poster.pdf            # A1 print-ready PDF
+    │   └── CSC3034_A1_Poster_300DPI.png     # 300 DPI raster for print
+    └── _legacy/                             # Superseded generators and blank templates
+        └── README.md                        # What each file is and what replaced it
 ```
 
 ---
@@ -207,6 +210,9 @@ asserts the hand-written engine agrees with scikit-fuzzy within 0.5 on every sce
 ```bash
 # Cross-check the engine against scikit-fuzzy (prints a per-scenario deviation table)
 python -m src.fuzzy_system.reference_engine --tolerance 0.5
+
+# Benchmark the three defuzzification methods (report Table 3)
+python -m src.fuzzy_system.defuzz_benchmark
 ```
 
 ---

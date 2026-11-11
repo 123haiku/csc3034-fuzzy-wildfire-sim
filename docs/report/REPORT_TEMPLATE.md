@@ -11,7 +11,7 @@
 ## Abstract
 Wildfires pose catastrophic ecological and atmospheric hazards, threatening terrestrial ecosystems and contributing significantly to global carbon emissions. Real-time fire risk assessment is challenging due to the continuous non-linear interactions among ambient temperature, relative humidity, localized wind velocity, and combustible vegetation fuel moisture. Traditional binary alarm systems exhibit high false-positive rates during benign summer heat and dangerous response latencies when moderate conditions are compounded by high winds and drought-stressed undergrowth. 
 
-This paper proposes an explainable **Mamdani Fuzzy Logic Inference System** coupled with **NVIDIA Isaac Sim (OpenUSD)** for dynamic forest fire risk estimation and autonomous unmanned aerial vehicle (UAV) surveillance response. The fuzzy controller maps four continuous environmental inputs into a normalized **Fire Risk Index (FRI)**, an autonomous **UAV Patrol Urgency Throttle**, and a discrete suppression alert status. A procedural 3D forest simulation stage was created in Isaac Sim containing forest terrain, varied vegetation moisture distributions, thermal wildfire hotspots, and an animated surveillance drone. Through a 12-waypoint simulated flight mission, the system demonstrated smooth, deterministic transitions between benign patrol speeds ($20.0\%$ urgency, $\text{FRI}=45.0$) and rapid emergency response ($89.5\%$ throttle urgency, $\text{FRI}=91.4$) upon entering active thermal hazard zones. The fuzzy inference system was validated through automated unit tests ($100\%$ pass rate) and benchmarked against multiple defuzzification methods, confirming its efficacy for real-time robotic deployment in alignment with **United Nations Sustainable Development Goals 13 (Climate Action)** and **15 (Life on Land)**.
+This paper proposes an explainable **Mamdani Fuzzy Logic Inference System** coupled with **NVIDIA Isaac Sim (OpenUSD)** for dynamic forest fire risk estimation and autonomous unmanned aerial vehicle (UAV) surveillance response. The fuzzy controller maps four continuous environmental inputs into three defuzzified consequents: a normalized **Fire Risk Index (FRI)**, an autonomous **UAV Patrol Urgency Throttle**, and a continuous **Suppression Alert Level** on $[0, 3]$ whose tiers (Advisory, Watch, Warning, Evacuate/Suppress) are inferred by the rule base rather than thresholded from the risk index. A procedural 3D forest simulation stage was created in Isaac Sim containing forest terrain, varied vegetation moisture distributions, thermal wildfire hotspots, and an animated surveillance drone. Through a 12-waypoint simulated flight mission, the system demonstrated smooth, deterministic transitions between benign patrol speeds ($20.1\%$ urgency, $\text{FRI}=45.0$, alert $1.000$) and rapid emergency response ($89.5\%$ throttle urgency, $\text{FRI}=91.4$, alert $2.826$) upon entering active thermal hazard zones. The inference engine was validated in two ways: automated unit tests covering the scenario envelope, input boundaries and all three consequents, plus a per-scenario cross-check against the scikit-fuzzy reference implementation (worst deviation $0.069$ across nine scenarios). The three defuzzification algorithms were also benchmarked, confirming **Centroid of Area** as the choice for smooth actuation. The system is presented in alignment with **United Nations Sustainable Development Goals 13 (Climate Action)** and **15 (Life on Land)**.
 
 **Keywords**: Computational Intelligence, Mamdani Fuzzy Inference, Wildfire Risk Modeling, Autonomous UAV Surveillance, NVIDIA Isaac Sim, OpenUSD, Sustainable Development Goals.
 
@@ -78,60 +78,85 @@ The computational pipeline comprises three interconnected modules:
 The controller incorporates four input variables spanning realistic meteorological boundaries:
 
 #### 1. Ambient Temperature ($T \in [0, 50]^\circ\text{C}$):
-* $\text{Low}(T) = \text{trapmf}(T; 0, 0, 15, 25)$
-* $\text{Moderate}(T) = \text{trimf}(T; 20, 28, 35)$
+* $\text{Low}(T) = \text{trapmf}(T; 0, 0, 15, 22)$
+* $\text{Moderate}(T) = \text{trimf}(T; 18, 26, 34)$
 * $\text{High}(T) = \text{trimf}(T; 30, 38, 44)$
 * $\text{Extreme}(T) = \text{trapmf}(T; 40, 45, 50, 50)$
 
 #### 2. Relative Humidity ($RH \in [0, 100]\%$):
-* $\text{High}(RH) = \text{trapmf}(RH; 60, 75, 100, 100)$
-* $\text{Moderate}(RH) = \text{trimf}(RH; 35, 50, 65)$
-* $\text{Low}(RH) = \text{trimf}(RH; 15, 28, 40)$
-* $\text{Very Low}(RH) = \text{trapmf}(RH; 0, 0, 12, 20)$
+* $\text{Very Low}(RH) = \text{trapmf}(RH; 0, 0, 15, 25)$
+* $\text{Low}(RH) = \text{trimf}(RH; 20, 35, 50)$
+* $\text{Moderate}(RH) = \text{trimf}(RH; 40, 60, 75)$
+* $\text{High}(RH) = \text{trapmf}(RH; 70, 85, 100, 100)$
 
 #### 3. Wind Velocity ($W \in [0, 100]\text{ km/h}$):
 * $\text{Calm}(W) = \text{trapmf}(W; 0, 0, 10, 20)$
 * $\text{Moderate}(W) = \text{trimf}(W; 15, 30, 45)$
-* $\text{High}(W) = \text{trimf}(W; 40, 55, 70)$
-* $\text{Severe}(W) = \text{trapmf}(W; 65, 80, 100, 100)$
+* $\text{High}(W) = \text{trimf}(W; 40, 60, 75)$
+* $\text{Severe}(W) = \text{trapmf}(W; 70, 85, 100, 100)$
 
 #### 4. Vegetation / Fuel Moisture Dryness ($F \in [0, 100]\%$):
 * $\text{Wet}(F) = \text{trapmf}(F; 0, 0, 20, 35)$
-* $\text{Moderate}(F) = \text{trimf}(F; 30, 45, 60)$
-* $\text{Dry}(F) = \text{trimf}(F; 55, 70, 85)$
-* $\text{Critically Dry}(F) = \text{trapmf}(F; 80, 90, 100, 100)$
+* $\text{Moderate}(F) = \text{trimf}(F; 30, 50, 70)$
+* $\text{Dry}(F) = \text{trimf}(F; 65, 80, 90)$
+* $\text{Critically Dry}(F) = \text{trapmf}(F; 85, 95, 100, 100)$
 
 The mathematical definitions for triangular $\text{trimf}(x; a, b, c)$ and trapezoidal $\text{trapmf}(x; a, b, c, d)$ functions are defined as:
-$$\text{trimf}(x; a, b, c) = \max\left(0, \min\left(\frac{x - a}{b - a}, \frac{c - x}{c - b}\right)\right)$$
-$$\text{trapmf}(x; a, b, c, d) = \max\left(0, \min\left(\frac{x - a}{b - a}, 1, \frac{d - x}{d - c}\right)\right)$$
+
+$$\text{trimf}(x; a, b, c) = \max\Big(0,\ \min\big((x - a)/(b - a),\ (c - x)/(c - b)\big)\Big)$$
+
+$$\text{trapmf}(x; a, b, c, d) = \max\Big(0,\ \min\big((x - a)/(b - a),\ 1,\ (d - x)/(d - c)\big)\Big)$$
 
 ### 2.3 Linguistic Output Variables
 
+Three Mamdani consequents are defuzzified. Each rule fires one term in every output
+universe, so the alert level is inferred by the rule base rather than thresholded from
+the fire risk index.
+
 1. **Fire Risk Index ($\text{FRI} \in [0, 100]$)**:
    * $\text{Low} = \text{trapmf}(0, 0, 20, 35)$
-   * $\text{Moderate} = \text{trimf}(30, 48, 65)$
-   * $\text{High} = \text{trimf}(60, 75, 88)$
-   * $\text{Extreme} = \text{trapmf}(82, 92, 100, 100)$
+   * $\text{Moderate} = \text{trimf}(25, 45, 65)$
+   * $\text{High} = \text{trimf}(55, 75, 85)$
+   * $\text{Extreme} = \text{trapmf}(80, 90, 100, 100)$
 
 2. **UAV Patrol Speed & Urgency ($S \in [0, 100]\%$)**:
    * $\text{Standard Patrol} = \text{trapmf}(0, 0, 25, 45)$
    * $\text{Accelerated} = \text{trimf}(40, 60, 80)$
    * $\text{Emergency Dispatch} = \text{trapmf}(75, 90, 100, 100)$
 
-*(Visual plot of all membership functions is illustrated in `plots/membership_functions.png`).*
+3. **Suppression Alert Level ($A \in [0, 3]$)**:
+   * $\text{Advisory} = \text{trapmf}(0, 0, 0, 0.6)$
+   * $\text{Watch} = \text{trimf}(0.4, 1.0, 1.6)$
+   * $\text{Warning} = \text{trimf}(1.4, 2.0, 2.6)$
+   * $\text{Evacuate/Suppress} = \text{trapmf}(2.4, 3, 3, 3)$
+
+The alert universe is sampled at $\Delta a = 0.25$ so every integer tier and every set
+shoulder ($0.4$, $1.6$, $1.4$, $2.6$) falls on a sample, which keeps each triangular set
+peaking at exactly $1.0$. The discrete alert tier reported downstream is
+$\text{round}(A^*)$ clamped to $[0, 3]$; the continuous $A^*$ is the primary output.
+
+*(Visual plot of all membership functions is illustrated in `plots/membership_functions.png`
+and the three output universes in `plots/output_membership_functions.png`).*
 
 ### 2.4 Fuzzy Rule Base & Inference Logic
 The system implements a domain-expert rule matrix formulated in consultation with standard wildfire behavior models (e.g., McArthur Forest Fire Danger Index). Representative rules include:
 
-| Rule ID | Temperature ($T$) | Humidity ($RH$) | Wind Speed ($W$) | Fuel Dryness ($F$) | Resulting Fire Risk | UAV Patrol Urgency | Status |
+| Rule ID | Temperature ($T$) | Humidity ($RH$) | Wind Speed ($W$) | Fuel Dryness ($F$) | Fire Risk | Patrol Urgency | Alert Level |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **R1** | Low | High | Calm | Wet | Low | Standard Patrol | Advisory |
-| **R2** | Moderate | Moderate | Moderate | Moderate | Moderate | Standard Patrol | Watch |
-| **R3** | Moderate | Low | High | Dry | High | Accelerated | Warning |
-| **R4** | High | Low | High | Critically Dry | Extreme | Emergency Dispatch | Critical |
-| **R5** | Extreme | Very Low | Severe | Critically Dry | Extreme | Emergency Dispatch | Critical |
-| **R6** | Extreme | Moderate | High | Dry | High | Accelerated | Warning |
-| **R7** | High | High | Calm | Wet | Moderate | Standard Patrol | Watch |
+| **R1** | any | High | any | Wet | Low | Standard Patrol | Advisory |
+| **R2** | Low | Moderate | any | any | Low | Standard Patrol | Advisory |
+| **R3** | Moderate | any | any | Moderate | Moderate | Standard Patrol | Watch |
+| **R4** | Moderate | any | High | Dry | High | Accelerated | Warning |
+| **R5** | High | Low | any | any | High | Accelerated | Warning |
+| **R6** | High | any | Severe | any | Extreme | Emergency Dispatch | Evacuate/Suppress |
+| **R7** | Extreme | Very Low | any | any | Extreme | Emergency Dispatch | Evacuate/Suppress |
+| **R8** | any | any | High | Critically Dry | Extreme | Emergency Dispatch | Evacuate/Suppress |
+| **R9** | Extreme | any | any | Critically Dry | Extreme | Emergency Dispatch | Evacuate/Suppress |
+| **R10** | any | High | Calm | any | Low | Standard Patrol | Advisory |
+
+`any` means the rule does not constrain that variable. Each row fires all three
+consequents simultaneously; the alert column is a fuzzy consequence, not a label
+derived from the risk column.
 
 Under Mamdani inference, rule firing strength $\alpha_k$ for rule $k$ is computed using the t-norm (minimum operator):
 $$\alpha_k = \min\Big(\mu_{T, k}(T), \mu_{RH, k}(RH), \mu_{W, k}(W), \mu_{F, k}(F)\Big)$$
@@ -139,8 +164,9 @@ The aggregated output fuzzy subset $\mu_{\text{agg}}(y)$ is formed through the s
 $$\mu_{\text{agg}}(y) = \max_{k} \Big(\min\big(\alpha_k, \mu_{\text{output}, k}(y)\big)\Big)$$
 
 ### 2.5 Defuzzification Formulation
-To generate deterministic crisp values for drone velocity actuation and risk indexing, Center of Gravity (Centroid / COG) defuzzification is applied:
-$$y^* = \frac{\int_{y_{\min}}^{y_{\max}} y \cdot \mu_{\text{agg}}(y) \, dy}{\int_{y_{\min}}^{y_{\max}} \mu_{\text{agg}}(y) \, dy}$$
+To generate deterministic crisp values for the three consequents, Center of Gravity (Centroid / COG) defuzzification is applied:
+
+$$y^* = \frac{\int y \cdot \mu_{\text{agg}}(y)\, dy}{\int \mu_{\text{agg}}(y)\, dy}$$
 
 ---
 
@@ -169,43 +195,66 @@ To prevent unconstrained gravitational free-fall while maintaining deterministic
 ## 4. Experimental Results & Performance Evaluation
 
 ### 4.1 Autonomous Surveillance Mission Telemetry
-A 12-waypoint autonomous reconnaissance mission was simulated over the forest stage. Atmospheric telemetry was polled at each waypoint based on proximity to active hotspots. The complete mission log is summarized in Table 2:
+A 12-waypoint autonomous reconnaissance mission was simulated over the forest stage. Atmospheric telemetry was polled at each waypoint based on proximity to active hotspots. The mission log is a deterministic artefact: the synthetic sensor noise is drawn from `random.Random(seed)` with `seed = 0`, so re-running `run_stage_patrol_simulation(stage, steps=12, seed=0)` reproduces Table 2 exactly.
 
-**Table 2: Real-Time UAV Surveillance Mission Telemetry & Fuzzy Ingestion Log**
-| Waypoint | Coordinates $(X, Y, Z)$ | Temp ($^\circ\text{C}$) | Humidity ($\%$) | Wind ($\text{km/h}$) | Fuel Dryness ($\%$) | Fire Risk Index (0-100) | Throttle Urgency ($\%$) | Alert Status |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **00** | $(0.0, 0.0, 5.0\text{m})$ | $28.8$ | $47.8$ | $23.2$ | $40.2$ | **45.0** | $20.0\%$ | `WATCH` |
-| **01** | $(4.0, 5.0, 5.5\text{m})$ | $28.6$ | $46.9$ | $27.5$ | $40.3$ | **45.0** | $20.0\%$ | `WATCH` |
-| **02** | $(8.0, 10.0, 6.0\text{m})$ | $34.0$ | $38.6$ | $29.5$ | $55.2$ | **71.0** | $59.9\%$ | `WARNING` |
-| **03** | $(13.5, 15.5, 5.0\text{m})$ | $42.4$ | $19.4$ | $44.8$ | $86.8$ | **91.2** | $89.2\%$ | `CRITICAL` |
-| **04** | $(15.0, 17.0, 4.5\text{m})$ | $41.7$ | $18.3$ | $44.1$ | $84.5$ | **90.9** | $88.8\%$ | `CRITICAL` |
-| **05** | $(10.0, 18.0, 6.5\text{m})$ | $37.8$ | $26.6$ | $40.7$ | $71.3$ | **71.0** | $60.0\%$ | `WARNING` |
-| **06** | $(0.0, 15.0, 7.0\text{m})$ | $28.3$ | $47.4$ | $24.3$ | $39.8$ | **45.0** | $20.1\%$ | `WATCH` |
-| **07** | $(-10.0, 12.0, 6.0\text{m})$ | $33.2$ | $38.5$ | $31.7$ | $54.8$ | **63.7** | $50.3\%$ | `WARNING` |
-| **08** | $(-17.5, 9.8, 4.5\text{m})$ | $44.5$ | $17.9$ | $47.3$ | $87.3$ | **91.7** | $90.0\%$ | `CRITICAL` |
-| **09** | $(-10.0, 0.0, 6.0\text{m})$ | $28.3$ | $46.9$ | $26.5$ | $41.8$ | **45.0** | $19.6\%$ | `WATCH` |
-| **10** | $(0.0, -10.0, 6.5\text{m})$ | $28.2$ | $48.5$ | $25.5$ | $39.6$ | **45.0** | $20.1\%$ | `WATCH` |
-| **11** | $(7.8, -19.5, 5.0\text{m})$ | $43.0$ | $17.6$ | $47.7$ | $88.9$ | **91.5** | $89.6\%$ | `CRITICAL` |
+**Table 2: Real-Time UAV Surveillance Mission Telemetry & Fuzzy Ingestion Log (seed = 0)**
+| Waypoint | Coordinates $(X, Y, Z)$ | Temp ($^\circ\text{C}$) | Humidity ($\%$) | Wind ($\text{km/h}$) | Fuel Dryness ($\%$) | Fire Risk Index (0-100) | Throttle Urgency ($\%$) | Alert ($0$-$3$) | Alert Status |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **00** | $(0.0, 0.0, 5.0\text{m})$ | $29.1$ | $49.0$ | $24.9$ | $39.8$ | **45.0** | $20.1\%$ | $1.000$ | `WATCH` |
+| **01** | $(4.0, 5.0, 5.5\text{m})$ | $28.3$ | $47.6$ | $27.5$ | $39.9$ | **45.0** | $20.1\%$ | $1.000$ | `WATCH` |
+| **02** | $(8.0, 10.0, 6.0\text{m})$ | $32.9$ | $39.0$ | $34.2$ | $55.2$ | **61.4** | $47.0\%$ | $1.680$ | `WARNING` |
+| **03** | $(13.5, 15.5, 5.0\text{m})$ | $42.8$ | $18.9$ | $45.2$ | $86.8$ | **91.4** | $89.5\%$ | $2.826$ | `CRITICAL` |
+| **04** | $(15.0, 17.0, 4.5\text{m})$ | $43.4$ | $21.7$ | $45.3$ | $85.8$ | **84.3** | $79.0\%$ | $2.494$ | `WARNING` |
+| **05** | $(10.0, 18.0, 6.5\text{m})$ | $37.8$ | $28.8$ | $40.8$ | $72.4$ | **71.3** | $60.0\%$ | $2.000$ | `WARNING` |
+| **06** | $(0.0, 15.0, 7.0\text{m})$ | $28.2$ | $46.4$ | $25.0$ | $40.8$ | **45.0** | $19.9\%$ | $1.000$ | `WATCH` |
+| **07** | $(-10.0, 12.0, 6.0\text{m})$ | $34.3$ | $39.9$ | $31.6$ | $57.2$ | **71.2** | $60.0\%$ | $2.000$ | `WARNING` |
+| **08** | $(-17.5, 9.8, 4.5\text{m})$ | $42.9$ | $18.7$ | $44.9$ | $86.8$ | **91.4** | $89.6\%$ | $2.829$ | `CRITICAL` |
+| **09** | $(-10.0, 0.0, 6.0\text{m})$ | $28.8$ | $47.6$ | $27.8$ | $41.0$ | **45.0** | $19.8\%$ | $1.000$ | `WATCH` |
+| **10** | $(0.0, -10.0, 6.5\text{m})$ | $27.0$ | $48.0$ | $28.1$ | $39.7$ | **45.0** | $20.1\%$ | $1.000$ | `WATCH` |
+| **11** | $(7.8, -19.5, 5.0\text{m})$ | $43.1$ | $18.9$ | $42.4$ | $88.5$ | **91.5** | $89.7\%$ | $2.831$ | `CRITICAL` |
+
+Note that waypoint 04 carries a higher risk index than waypoint 05 but a lower alert
+value: the alert consequent is a separate inference, so the two outputs are correlated
+but not a remapping of one another.
 
 *(The complete 4-panel multi-variable mission telemetry visualization is presented in `plots/mission_telemetry_dashboard.png`).*
 
 ### 4.2 Defuzzification Method Comparison
-To assess output sensitivity, the controller was benchmarked using three defuzzification algorithms across benign vs. critical conditions:
+To assess output sensitivity, the fire risk consequent was rebuilt with three
+defuzzification algorithms through `src/fuzzy_system/defuzz_benchmark.py`, which runs
+each method on the same membership sets and rule base:
 
-**Table 3: Defuzzification Algorithm Benchmark**
-| Environmental Scenario | Centroid (COG) FRI | Bisector FRI | Mean of Maximum (MOM) FRI | Computational Time ($\mu\text{s}$) | Actuation Smoothness |
-|:---|:---:|:---:|:---:|:---:|:---|
-| **Benign Clear Day** ($T=22, RH=65, W=12, F=25$) | $20.8$ | $21.0$ | $12.5$ | $142\ \mu\text{s}$ | Highly Smooth |
-| **Dry Spring Heat** ($T=32, RH=40, W=30, F=55$) | $52.4$ | $53.0$ | $48.0$ | $148\ \mu\text{s}$ | Smooth |
-| **High Hazard Drought** ($T=39, RH=22, W=55, F=82$) | $81.6$ | $82.5$ | $88.0$ | $151\ \mu\text{s}$ | Moderate |
-| **Critical Wildfire** ($T=46, RH=12, W=85, F=95$) | $92.3$ | $92.8$ | $96.0$ | $145\ \mu\text{s}$ | Smooth Step Transition |
+**Table 3: Defuzzification Algorithm Benchmark, Fire Risk Index**
+| Environmental Scenario | Centroid (COG) | Bisector | Mean of Maximum (MOM) |
+|:---|:---:|:---:|:---:|
+| **Benign Clear Day** ($T=22, RH=65, W=12, F=25$) | $17.5$ | $17.5$ | $17.5$ |
+| **Dry Spring Heat** ($T=32, RH=40, W=30, F=55$) | $55.6$ | $55.6$ | $56.2$ |
+| **High Hazard Drought** ($T=39, RH=22, W=55, F=82$) | $70.3$ | $70.3$ | $70.6$ |
+| **Critical Wildfire** ($T=46, RH=12, W=85, F=95$) | $92.2$ | $92.5$ | $95.1$ |
 
-* **Analysis**: While MOM executes slightly faster, it produces piecewise step discontinuities detrimental to physical drone motor controllers. **Centroid (COG)** provides the smoothest motor throttle curves without mechanical vibration.
+Largest centroid-to-MOM divergence is $2.9$ risk points, at the Critical scenario where
+the aggregated set has two separated peaks. Centroid and bisector agree to within $0.3$
+points on every scenario.
+
+* **Analysis**: the three methods do not separate on cost, because defuzzification over
+  a 500-point universe is a small part of the evaluation loop. They separate on
+  continuity. MOM returns the mean of the aggregated set's maxima, so as the input
+  crosses a boundary the output jumps between peaks — a torque step on a 250 g
+  airframe. Centroid integrates the whole area, so its output is continuous in the
+  input, which is what keeps the throttle trace smooth in Table 2.
 
 ### 4.3 Simulation Runtime & Engine Performance
 * **Hardware Platform**: NVIDIA GeForce RTX 4060 Laptop GPU, 16 GB RAM, 14-core Intel Core i7-13650HX.
 * **Rendering Framerate**: $67.3\text{ fps} - 72.1\text{ fps}$ at $1280 \times 720$ resolution under RTX Real-Time 2.0 lighting.
-* **Fuzzy Inference Latency**: $0.15\text{ ms}$ per evaluation loop. This latency is well within standard robotic control frequencies ($50\text{ Hz} - 200\text{ Hz}$), confirming the system's viability for edge deployment on embedded microcomputers (e.g., NVIDIA Jetson Orin Nano).
+* **Fuzzy Inference Latency**: measured with `tools/presentation/latency_probe.py`, which
+  calls `WildfireFuzzyController.compute()` over 20,000 calls per scenario after a
+  2,000-call warm-up: median $0.077\ \text{ms}$ for the benign scenario and
+  $0.284\ \text{ms}$ for the critical scenario (p99 $0.182\ \text{ms}$ and
+  $1.415\ \text{ms}$ respectively). The loop cost rises with the number of rules
+  that fire. Both medians sit inside a $50\text{ ms}$ control budget with two orders of
+  magnitude of headroom, which supports edge deployment on embedded microcomputers
+  (e.g., NVIDIA Jetson Orin Nano). Host-Python timings include interpreter overhead and
+  are an upper bound on the deployed figure.
 
 ---
 

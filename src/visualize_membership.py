@@ -15,7 +15,7 @@ def plot_membership_functions(output_dir: str = "plots"):
     c = WildfireFuzzyController()
 
     plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
-    fig, axes = plt.subplots(3, 2, figsize=(14, 14))
+    fig, axes = plt.subplots(4, 2, figsize=(14, 17))
     fig.suptitle("Fuzzy Linguistic Membership Functions (CSC3034)", fontsize=16, fontweight="bold")
     # 1. Temperature
     ax = axes[0, 0]
@@ -70,6 +70,33 @@ def plot_membership_functions(output_dir: str = "plots"):
     ax.set_xlabel("Speed Actuation (%)")
     ax.set_ylabel("Degree of Membership")
     ax.legend()
+
+    # 7. Output: Suppression Alert Level
+    ax = axes[3, 0]
+    for name, mf in c.mf_alert.items():
+        ax.plot(c.x_alert, mf, label=name.replace("_", " ").capitalize(), linewidth=2)
+    ax.set_title("Output: Suppression Alert Level")
+    ax.set_xlabel("Alert Level (0 Advisory | 1 Watch | 2 Warning | 3 Evacuate/Suppress)")
+    ax.set_xlim(0, 3)
+    ax.set_xticks([0, 1, 2, 3])
+    ax.set_ylabel("Degree of Membership")
+    ax.legend(loc="upper right")
+
+    # 8. Output structure summary
+    ax = axes[3, 1]
+    ax.axis("off")
+    ax.set_title("Output Structure")
+    lines = [
+        "Fire Risk Index    [0, 100]     4 sets, centroid",
+        "Patrol Urgency     [0, 100] %   3 sets, centroid",
+        "Suppression Alert  [0, 3]       4 sets, centroid",
+        "",
+        "Every rule fires one consequent in",
+        "each of the three output universes.",
+        "The alert tier is round(alert value),",
+        "not a threshold on the risk index.",
+    ]
+    ax.text(0.02, 0.95, "\n".join(lines), va="top", ha="left", fontsize=10.5, family="monospace")
 
     plt.tight_layout()
     chart_path = os.path.join(output_dir, "membership_functions.png")
