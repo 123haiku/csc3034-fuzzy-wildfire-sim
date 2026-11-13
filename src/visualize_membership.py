@@ -15,7 +15,7 @@ def plot_membership_functions(output_dir: str = "plots"):
     c = WildfireFuzzyController()
 
     plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
-    fig, axes = plt.subplots(4, 2, figsize=(14, 17))
+    fig, axes = plt.subplots(4, 2, figsize=(13, 12))
     fig.suptitle("Fuzzy Linguistic Membership Functions (CSC3034)", fontsize=16, fontweight="bold")
     # 1. Temperature
     ax = axes[0, 0]

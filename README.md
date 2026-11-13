@@ -115,6 +115,7 @@ csc3034-fuzzy-wildfire-sim/
 │   │   └── defuzz_benchmark.py    # centroid / bisector / MOM benchmark, report Table 3
 │   ├── create_wildfire_stage.py   # Procedurally builds the USD twin and runs the patrol
 │   ├── run_demo.py                # Interactive CLI demo to test fuzzy inference
+│   ├── visualize_architecture.py  # Report Figure 1: the three-module system diagram
 │   ├── visualize_membership.py    # Membership plots for the report and A1 poster
 │   ├── visualize_mission_telemetry.py  # Waypoint telemetry dashboard
 │   └── export_report_docx.py      # Builds the final report DOCX from REPORT_TEMPLATE.md
@@ -123,8 +124,15 @@ csc3034-fuzzy-wildfire-sim/
 │   ├── test_fuzzy_controller.py   # Unit tests: scenarios, boundaries, alert consequent
 │   └── test_reference_engine.py   # Engine vs scikit-fuzzy agreement per scenario
 ├── tools/
+│   ├── verify_values.py           # Diffs the shipped poster/report/deck against the measurement
+│   ├── report/                    # Diagnostics used while writing the report
+│   │   ├── query_scenarios.py     # Runs one set of inputs through the engine
+│   │   ├── rule_trace.py          # Per-rule firing strengths for a scenario
+│   │   └── audit_report_docx.py   # Heading shape, rendering defects, vague wording
 │   └── presentation/              # Poster + deck build pipeline (figures → pptx/pdf/poster)
 │       ├── README.md              # Rebuild commands and layout conventions
+│       ├── measure.py             # Writes docs/measurements.json, the single source of figures
+│       ├── values.py              # Loads that file for the poster and the deck
 │       ├── nvidia_plots.py        # Regenerates the deck figures in the NVIDIA palette
 │       ├── crop_viewport.py       # Cuts Isaac Sim window chrome off the raw captures
 │       ├── build_deck_v4.py       # Builds all 11 slides
@@ -133,6 +141,7 @@ csc3034-fuzzy-wildfire-sim/
 │       └── verify_deck.py         # Assertion-based check of the .pptx and .pdf
 └── docs/
     ├── SUBMISSION.md                          # What is handed in, and how to rebuild it
+    ├── measurements.json                      # Every figure the deliverables quote
     ├── presentation/
     │   ├── CSC3034_Presentation_Slides.pptx  # 11-slide deck, notes on every slide
     │   ├── CSC3034_Presentation_Slides.pdf   # Same deck as PDF
@@ -142,7 +151,7 @@ csc3034-fuzzy-wildfire-sim/
     │   ├── CSC3034_Group_Proposal_Form.md    # Project proposal form
     │   └── CSC3034_Group_Proposal_Form.docx  # Same, as a Word document
     ├── report/
-    │   ├── REPORT_TEMPLATE.md               # Report source (Markdown)
+    │   ├── REPORT_TEMPLATE.md               # Report source (Markdown, {{token}} substitution)
     │   ├── CSC3034_Final_Report.docx        # Final submission
     │   └── CSC3034_Final_Report.pdf         # Final submission, PDF export
     ├── poster/
@@ -217,6 +226,27 @@ python -m src.fuzzy_system.defuzz_benchmark
 
 ---
 
+## 📏 One Source for Every Quoted Figure
+
+The poster, the report and the deck must not disagree. Instead of each carrying its own
+transcribed constants, all three read `docs/measurements.json`:
+
+```bash
+python tools/presentation/measure.py   # writes docs/measurements.json
+python tools/verify_values.py          # fails if a shipped document still quotes a stale figure
+```
+
+`measure.py` records the engine structure, the 12-waypoint mission log for `seed = 0`, the
+three-method defuzzification benchmark, the evaluation-loop latency and the scikit-fuzzy
+worst deviation. Re-run it whenever the controller, the rule base or the stage model
+changes, then rebuild the three deliverables.
+
+`verify_values.py` reads the built `.docx`, `.pptx` and poster `.html`, asserts the required
+figures are present, asserts superseded ones are gone, and compares the report's mission and
+defuzzification tables row by row against the measurement. It currently runs 35 checks.
+
+---
+
 ## 🎞 Defence Slides
 
 The deck is generated, not hand-edited: `docs/presentation/CSC3034_Presentation_Slides.pptx`
@@ -224,6 +254,7 @@ The deck is generated, not hand-edited: `docs/presentation/CSC3034_Presentation_
 by hand is overwritten by the next build.
 
 ```bash
+python tools/presentation/measure.py        # refresh the shared figures first
 python tools/presentation/nvidia_plots.py   # figures in the NVIDIA palette
 python tools/presentation/build_deck_v4.py  # deck
 python tools/presentation/verify_deck.py    # 16 assertions on the pptx + pdf

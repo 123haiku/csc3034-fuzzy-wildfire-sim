@@ -97,8 +97,44 @@ def generate_hotspot_usda(hotspot_id: int, x: float, y: float, intensity: float,
     }}"""
 
 
+# Sensor synthesis shared by the baked stage telemetry and the mission log. Keeping one
+# implementation means the attributes authored onto the UAV prim and the numbers in the
+# report's mission table are produced by the same model; they used to be two separate
+# copies with different boost coefficients.
+BASE_TEMP = 28.0
+BASE_HUMIDITY = 48.0
+BASE_WIND = 25.0
+BASE_DRYNESS = 40.0
+HOTSPOT_RADIUS = 12.0
+
+
+def synthesise_sensors(x: float, y: float, hotspots, rng: random.Random | None = None):
+    """Returns (temperature, humidity, wind, fuel dryness) for a position on the stage.
+
+    A hotspot displaces the baseline readings in proportion to proximity; passing an rng
+    adds the per-waypoint sensor jitter used by the mission log.
+    """
+    min_dist = min(math.hypot(x - h["x"], y - h["y"]) for h in hotspots)
+    proximity = max(0.0, 1.0 - (min_dist / HOTSPOT_RADIUS))
+
+    jitter_temp = rng.uniform(-1.0, 1.5) if rng else 0.0
+    jitter_hum = rng.uniform(-2.0, 2.0) if rng else 0.0
+    jitter_wind = rng.uniform(-3.0, 4.0) if rng else 0.0
+    jitter_dry = rng.uniform(-1.0, 2.0) if rng else 0.0
+
+    temperature = min(50.0, BASE_TEMP + 16.0 * proximity + jitter_temp)
+    humidity = max(5.0, BASE_HUMIDITY - 32.0 * proximity + jitter_hum)
+    wind = min(95.0, BASE_WIND + 20.0 * proximity + jitter_wind)
+    dryness = min(100.0, BASE_DRYNESS + 50.0 * proximity + jitter_dry)
+    return temperature, humidity, wind, dryness
+
+
 def generate_uav_drone_usda() -> str:
-    """Generates a detailed quadcopter UAV drone equipped with animated flight path and spinning rotors."""
+    """Generates a detailed quadcopter UAV drone with a baked flight path.
+
+    The rotors are static discs: this build does not animate blade rotation, so no blade
+    rate is authored and none is reported.
+    """
     arm_length = 0.55
     prop_radius = 0.24
 
@@ -147,12 +183,7 @@ def generate_uav_drone_usda() -> str:
         rot_samples.append(f"            {frame}: ({pitch:.1f}, 0.0, {yaw:.1f}),")
 
         # Compute telemetry based on distance to hotspots
-        min_d = min(math.hypot(x - h["x"], y - h["y"]) for h in hotspots)
-        prox = max(0.0, 1.0 - (min_d / 12.0))
-        t = 28.0 + 15.0 * prox
-        rh = 48.0 - 30.0 * prox
-        w = 25.0 + 20.0 * prox
-        dry = 40.0 + 48.0 * prox
+        t, rh, w, dry = synthesise_sensors(x, y, hotspots)
         out = controller.compute(temperature=t, humidity=rh, wind_speed=w, vegetation_dryness=dry)
 
         temp_samples.append(f"            {frame}: {t:.1f},")
@@ -604,15 +635,10 @@ def run_stage_patrol_simulation(stage_path: Path, steps: int = 12, seed: int = 0
     for step_idx in range(min(steps, len(waypoints))):
         wx, wy, wz = waypoints[step_idx]
 
-        # Sensor readings vary dynamically based on distance to nearest hotspot
-        min_dist = min(math.hypot(wx - h["x"], wy - h["y"]) for h in hotspots)
-        proximity_factor = max(0.0, 1.0 - (min_dist / 12.0))
-
-        # Ambient sensor synthesis
-        current_temp = min(50.0, base_temp + 16.0 * proximity_factor + rng.uniform(-1.0, 1.5))
-        current_humidity = max(5.0, base_humidity - 32.0 * proximity_factor + rng.uniform(-2.0, 2.0))
-        current_wind = min(95.0, base_wind + 20.0 * proximity_factor + rng.uniform(-3.0, 4.0))
-        current_dryness = min(100.0, base_dryness + 50.0 * proximity_factor + rng.uniform(-1.0, 2.0))
+        # Sensor readings are produced by the same model that bakes the stage attributes.
+        current_temp, current_humidity, current_wind, current_dryness = synthesise_sensors(
+            wx, wy, hotspots, rng
+        )
 
         outputs = controller.compute(
             temperature=current_temp,

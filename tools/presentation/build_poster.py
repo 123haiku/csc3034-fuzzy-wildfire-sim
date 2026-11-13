@@ -8,7 +8,7 @@ Table content is computed from the controller at build time, never transcribed:
     rule base        10 rules x 3 consequents (risk, throttle, alert)
     flight log       run_stage_patrol_simulation(seed=0), the report's Table 2
     defuzzification  src/fuzzy_system/defuzz_benchmark.py, four scenarios
-    loop latency     WildfireFuzzyController.compute(), measured here
+    loop latency     docs/measurements.json, written by tools/presentation/measure.py
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import contextlib
 import io
+import json
 import sys
 from pathlib import Path
 
@@ -53,6 +54,16 @@ RULES = [
 
 def flight_log(sample: tuple = (0, 3, 6, 8)):
     """(label, temp, RH, FRI, throttle, alert) for the selected waypoints, seed=0."""
+    measured = load_measurements()
+    if measured and measured.get("mission"):
+        log = measured["mission"]
+        return [
+            (f"WP {row['step']:02d}", f"{row['temperature']:.1f} \u00b0C",
+             f"{row['humidity']:.1f} %", f"{row['fire_risk_index']:.1f}",
+             f"{row['patrol_urgency']:.1f} %", row["alert_name"])
+            for i in sample for row in [log[i]]
+        ]
+
     from create_wildfire_stage import run_stage_patrol_simulation
 
     with contextlib.redirect_stdout(io.StringIO()):
@@ -80,12 +91,30 @@ def defuzz_rows():
     return out
 
 
-# Measured with tools/presentation/latency_probe.py on the authoring workstation
-# (RTX 4060 Laptop, i7-13650HX, Python 3.15, resolver resolution 500): critical scenario,
-# median 0.284 ms over 20,000 calls, p99 1.415 ms. Pinned rather than re-measured at build
-# time so the poster, the report and the deck quote one figure.
-LOOP_MEDIAN_MS = 0.28
-LOOP_P99_MS = 1.42
+# Latency is not measured here. It is read from docs/measurements.json, which
+# tools/presentation/measure.py regenerates, so the poster, the report and the deck quote
+# whatever the last measurement recorded instead of three separate constants.
+MEASUREMENTS = REPO / "docs" / "measurements.json"
+
+
+def load_measurements() -> dict:
+    if not MEASUREMENTS.exists():
+        return {}
+    try:
+        return json.loads(MEASUREMENTS.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
+def latency_figures() -> tuple:
+    measured = load_measurements().get("latency", {})
+    medians = [v for k, v in measured.items() if k.endswith("_median_ms")]
+    p99s = [v for k, v in measured.items() if k.endswith("_p99_ms")]
+    if not medians:
+        raise SystemExit(
+            f"{MEASUREMENTS} has no latency block; run: python tools/presentation/measure.py"
+        )
+    return max(medians), max(p99s)
 
 
 def b64(path: Path) -> str:
@@ -113,7 +142,13 @@ def build_html(S: float) -> str:
         f"<td class='{'ok' if abs(cog - mom) >= 2.0 else 'dim'}'>{abs(cog - mom):.1f}</td></tr>"
         for name, cog, bis, mom in bench)
 
-    latency_med, latency_p99 = LOOP_MEDIAN_MS, LOOP_P99_MS
+    latency_med, latency_p99 = latency_figures()
+    engine = load_measurements().get("engine", {})
+    trees = engine.get("trees_in_asset", 0)
+    hotspots = engine.get("hotspots", 0)
+    keyframes = engine.get("uav_keyframes", 0)
+    frame_end = engine.get("frame_end", 0)
+    tests = load_measurements().get("tests", {}).get("passed", 0)
 
     flight_rows_html = "".join(
         f"<tr><td class='id'>{w}</td><td>{t}</td><td>{h}</td><td class='num'>{f}</td>"
@@ -196,10 +231,11 @@ td.dim {{ color: #8C8C8C; }}
   <div class="col">
     <div class="sec">
       <div class="sec-h"><div class="sec-n">01</div><div class="sec-t">Why a threshold fails</div></div>
-      <div class="lead">A single cut-off cannot separate <b>38 °C at 15 % humidity with 70 km/h wind</b>
-      from <b>42 °C in saturated still air</b>. The first case is the dangerous one, and a
-      temperature-only rule ranks it safe. Spread is non-linear in the same way: dry wind at
-      moderate temperature ignites faster than a hot, humid afternoon.</div>
+      <div class="lead">A single cut-off cannot separate <b>26 °C at 15 % humidity with 65 km/h wind</b>
+      from <b>38 °C under 85 % humidity</b>. The cooler case is the dangerous one: the controller
+      scores it <b>FRI 71.4</b> and the hot, humid case <b>FRI 14.0</b>, while a temperature-only
+      rule ranks them the other way round. Dry wind at moderate temperature ignites faster than a
+      hot, humid afternoon.</div>
       <table>
         <tr><th>Behaviour</th><th>Threshold</th><th>Mamdani</th></tr>
         <tr><td>Decision surface</td><td class="dim">step at 40 °C</td><td class="ok">continuous</td></tr>
@@ -259,12 +295,12 @@ td.dim {{ color: #8C8C8C; }}
     <div class="sec">
       <div class="sec-h"><div class="sec-n">05</div><div class="sec-t">Isaac Sim digital twin</div></div>
       <div class="two"><img src="{shot1}" alt="stage"><img src="{shot2}" alt="hotspot"></div>
-      <div class="cap">65 m OpenUSD stage, 48 procedural pines, 3 active hotspots, chase and thermal
-      cameras. Probe readings are taken from the stage every tick, so the controller is in the loop.</div>
+      <div class="cap">65 m OpenUSD stage, {trees} procedural trees, {hotspots} active hotspots, chase and thermal
+      cameras. Probe readings are taken from the stage at every keyframe, so the controller is in the loop.</div>
       <div class="kpi">
         <div class="k"><div class="v">65 × 65 m</div><div class="l">procedural OpenUSD stage</div></div>
-        <div class="k"><div class="v">3</div><div class="l">hotspots, 44.5 °C cores</div></div>
-        <div class="k"><div class="v">67–72</div><div class="l">FPS, RTX Real-Time 2.0</div></div>
+        <div class="k"><div class="v">{hotspots}</div><div class="l">hotspots, 44.5 °C cores</div></div>
+        <div class="k"><div class="v">{keyframes}</div><div class="l">keyframes, frames 0–{frame_end}</div></div>
         <div class="k"><div class="v">{latency_med:.2f} ms</div><div class="l">median loop, p99 {latency_p99:.2f} ms</div></div>
       </div>
     </div>
@@ -279,7 +315,7 @@ td.dim {{ color: #8C8C8C; }}
       hardcoded 90; recovery returns to 45.0 so nothing latches.</div>
       <div class="kpi">
         <div class="k"><div class="v">45.0</div><div class="l">FRI on open ground, 5 of 12 waypoints</div></div>
-        <div class="k"><div class="v">91.4</div><div class="l">FRI at all three hotspot passes</div></div>
+        <div class="k"><div class="v">91.4–91.5</div><div class="l">FRI at the three hotspot passes</div></div>
         <div class="k"><div class="v">2.83</div><div class="l">alert value at the hotspot passes</div></div>
         <div class="k"><div class="v">1.00</div><div class="l">alert value on open ground</div></div>
       </div>
@@ -293,15 +329,15 @@ td.dim {{ color: #8C8C8C; }}
 <div class="sec" style="border-top:0.4mm solid #262626; padding-top:5mm;">
   <div class="sec-h"><div class="sec-n">07</div><div class="sec-t">Conclusion</div></div>
   <div class="lead">Four inputs, ten auditable rules and a closed loop inside Isaac Sim;
-  <b>25 unit tests pass</b>. <b>Limitation:</b> simulation only, rule base expert-tuned, edge
+  <b>{tests} unit tests pass</b>. <b>Limitation:</b> simulation only, rule base expert-tuned, edge
   latency projected rather than measured. <b>Next:</b> ANFIS tuning, multi-UAV mesh, PX4 and
   Matrice 300 field trials.</div>
 </div>
 
 <div class="foot">
-  <div class="l"><b>Impact.</b> Early thermal detection within the first 15–30 minutes of ignition
-  catches fire before crown spread (SDG 13.1) and protects forest habitat (SDG 15.2); exact
-  coordinates cut containment time, water use and crew exposure.</div>
+  <div class="l"><b>Impact.</b> Reporting a hotspot while it is still small is what makes containment
+  cheap: the earlier the coordinates reach the crew, the less water, airtime and exposure the
+  response costs (SDG 13.1, SDG 15.2).</div>
   <div class="r">github.com/123haiku/csc3034-fuzzy-wildfire-sim<br>CSC3034 · A1 · 2026</div>
 </div>
 </body></html>"""

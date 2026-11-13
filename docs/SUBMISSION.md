@@ -32,15 +32,25 @@ controller and `run_stage_patrol_simulation(seed=0)`, so the poster cannot drift
 Rebuild:
 
 ```bash
-python src/visualize_membership.py          # Figure 1 and Figure 3
-python src/visualize_mission_telemetry.py   # Figure 2
-python src/export_report_docx.py            # DOCX from REPORT_TEMPLATE.md
+python tools/presentation/measure.py         # docs/measurements.json, the single source
+python src/visualize_architecture.py         # Figure 1
+python src/visualize_membership.py           # Figure 2 and Figure 3
+python src/visualize_mission_telemetry.py    # Figure 4
+python src/export_report_docx.py             # DOCX from REPORT_TEMPLATE.md + measurements
 ```
 
 Then export the PDF from Word (File > Save As > PDF), or with any `docx` to `pdf` converter.
 
-`export_report_docx.py` flattens the inline LaTeX in the Markdown into plain text, because Word
-does not render it. If `REPORT_TEMPLATE.md` gains new maths, extend `LATEX_SUBS` there.
+`export_report_docx.py` does three things beyond conversion. It flattens the inline LaTeX
+into linear text, because Word does not render it. It substitutes `{{path.to.value}}`
+tokens with values from `docs/measurements.json`. And it generates Table 2 and Table 3
+from that same file, so neither table is transcribed by hand.
+
+Every number the report, the poster and the deck quote comes from `docs/measurements.json`,
+which `tools/presentation/measure.py` writes. Re-run it whenever the controller, the rule
+base or the stage model changes; the three deliverables then quote the new figures instead
+of drifting apart. `python tools/verify_values.py` fails the build if any shipped document
+still carries a superseded figure.
 
 ## 3. Code
 
@@ -63,10 +73,17 @@ python -m pytest tests -q
 python -m src.fuzzy_system.reference_engine --tolerance 0.5
 python src/run_demo.py
 python -m src.fuzzy_system.isaac_sim_bridge --scenario worsening --steps 10
+python tools/report/audit_report_docx.py
+python tools/verify_values.py
 ```
 
-Expected: 25 tests pass, and the reference cross-check reports 9/9 scenarios within tolerance
-with a worst absolute deviation of 0.069.
+Expected: 25 tests pass, the reference cross-check reports 9/9 scenarios within tolerance
+with a worst absolute deviation of 0.069, the report audit reports zero rendering defects,
+and the value check passes every required/stale/table assertion.
+
+`tools/report/rule_trace.py --inputs T RH W F` prints the membership degrees and rule
+firing strengths behind any single reading, which is how the explainability claims in
+Section 5.1 are supported.
 
 ## Not needed for submission
 

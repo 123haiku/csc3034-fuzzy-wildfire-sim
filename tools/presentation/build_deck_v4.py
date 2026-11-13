@@ -13,6 +13,7 @@ Slide-7 numbers come from an actual run of create_wildfire_stage.run_stage_patro
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from pptx import Presentation
@@ -24,6 +25,13 @@ from pptx.util import Inches, Pt
 
 REPO = Path(__file__).resolve().parent.parent.parent
 PRES = REPO / "docs" / "presentation"
+
+# All quoted figures come from docs/measurements.json via values.py.
+from values import (BUDGET_PCT, FRAME_END, HOTSPOTS, KEYFRAMES, MEDIAN_MS,  # noqa: E402
+                    P99_MS, STAGE_FPS, TREES)
+
+MED_MS = MEDIAN_MS
+MED_PCT = BUDGET_PCT
 ASSETS = PRES / "assets"
 DST = PRES / "CSC3034_Presentation_Slides.pptx"   # canonical deliverable; v4 is the current generation
 
@@ -219,10 +227,10 @@ s = prs.slides.add_slide(BLANK)
 frame(s)
 head(s, "System pipeline", "Sensing to actuation in five stages", 3)
 stages = [
-    ("01", "Synthetic sensing", "Four probes on the OpenUSD stage, sampled at 60 Hz."),
+    ("01", "Synthetic sensing", f"Four probes on the OpenUSD stage, keyed at the {STAGE_FPS} fps frame rate."),
     ("02", "Fuzzification", "16 input sets, four per variable, triangular and trapezoidal."),
     ("03", "Fuzzy inference", "10 expert rules; min for AND, max for aggregation."),
-    ("04", "Defuzzification", "Centroid of area; continuous output, 0.28 ms median per loop."),
+    ("04", "Defuzzification", f"Centroid of area; continuous output, {MED_MS:.2f} ms median per loop."),
     ("05", "Actuation and alert", "Throttle 20-90 %; alert 0-3 as a third fuzzy output."),
 ]
 cell = (W - 4 * 0.36) / 5
@@ -235,9 +243,9 @@ for i, (num, title, body) in enumerate(stages):
         rule_v(s, x - 0.18, TOP + 0.05, 2.6)
 rule_h(s, L, 4.92, W)
 stats(s, 5.12, [
-    ("60 Hz", "sensor tick from the Isaac Sim stage"),
-    ("0.28 ms", "median per loop, p99 1.42 ms"),
-    ("0.6 %", "of the 50 ms control budget"),
+    (f"{STAGE_FPS} fps", "stage playback rate"),
+    (f"{MED_MS:.2f} ms", f"median per loop, p99 {P99_MS:.2f} ms"),
+    (f"{MED_PCT:.1f} %", "of the 50 ms control budget"),
 ])
 
 # ------------------------------------------------------------------------ 04
@@ -307,7 +315,7 @@ for tag, ante, fri, thr, alt in rules:
 text(s, L, y + 0.22, W, 0.9,
      [("4 inputs × 4 sets = 256 antecedent combinations, curated down to the 10 that are physically meaningful. ", 11, DIM, False),
       ("Mamdani: min for AND, max for aggregation, centroid for defuzzification.", 11, INK, False),
-      ("Cost: 0.28 ms per loop on the workstation; each rule fires all three consequents.", 11, DIM, False)])
+      (f"Cost: {MED_MS:.2f} ms per loop on the build machine; each rule fires all three consequents.", 11, DIM, False)])
 
 # ------------------------------------------------------------------------ 06
 s = prs.slides.add_slide(BLANK)
@@ -320,9 +328,9 @@ pic(s, ASSETS / "isaac_view_02_hotspot.png", 6.88, TOP + 0.05, 5.70,
 rule_h(s, L, 5.42, W)
 stats(s, 5.62, [
     ("65 × 65 m", "OpenUSD stage, procedurally generated"),
-    ("3", "active hotspots, up to 44.5 °C core plumes"),
+    (f"{HOTSPOTS}", "active hotspots, up to 44.5 °C core plumes"),
     ("2", "cameras: chase view and thermal gimbal"),
-    ("67-72", "FPS in RTX Real-Time 2.0 at 1280 × 720"),
+    (f"{KEYFRAMES}", f"keyframes over frames 0-{FRAME_END} at {STAGE_FPS} fps"),
 ], num_sz=26)
 
 # ------------------------------------------------------------------------ 07
@@ -405,7 +413,7 @@ pairs(s, L, 4.62, 5.55, fill_to=6.40, items=[
     ("Continuity, not speed.",
      "Centroid integrates the whole aggregated area, so a small input change produces a small output change. On a 250 g airframe that is the difference between smooth thrust and torque steps."),
     ("All three are cheap.",
-     "A full evaluation loop is 0.28 ms, so none of the methods is the bottleneck. They differ only in the 2.9-point gap MOM shows at the critical scenario."),
+     f"A full evaluation loop is {MED_MS:.2f} ms, so none of the methods is the bottleneck. They differ only in the 2.9-point gap MOM shows at the critical scenario."),
 ])
 pairs(s, RX, 4.62, 5.55, fill_to=6.40, items=[
     ("MOM jumps between peaks.",
@@ -423,7 +431,7 @@ text(s, L, TOP, CW, 0.24, [("EDGE STACK", 9.5, GREEN, True)])
 text(s, RX, TOP, CW, 0.24, [("WHY IT MATTERS", 9.5, GREEN, True)])
 pairs(s, L, TOP + 0.36, CW, [
     ("Jetson Orin Nano, 8 GB.", "7-15 W envelope, inside a micro-UAV battery budget."),
-    ("0.28 ms inference.", "median per loop; 0.6 % of the 50 ms budget."),
+    (f"{MED_MS:.2f} ms inference.", f"median per loop; {MED_PCT:.1f} % of the 50 ms budget."),
     ("Sensors already proven.", "FLIR Lepton 3.5 LWIR for the plume, Sensirion SHT40 for temperature and humidity."),
     ("LoRa backhaul.", "Carries the GPS fix of a confirmed hotspot to the ground crew."),
 ], lead_sz=12, body_sz=10.5, fill_to=6.55)
@@ -443,9 +451,9 @@ text(s, L, TOP, CW, 0.24, [("DELIVERED", 9.5, GREEN, True)])
 text(s, RX, TOP, CW, 0.24, [("NEXT", 9.5, GREEN, True)])
 pairs(s, L, TOP + 0.36, CW, [
     ("Fuzzy engine.", "Four inputs, ten rules, verified against the report's test vectors."),
-    ("Digital twin.", "65 m procedural forest holding 67-72 FPS in real-time ray tracing."),
+    ("Digital twin.", f"65 m procedural forest on the {STAGE_FPS} fps stage timeline."),
     ("Closed-loop actuation.", "20 % to 90 % throttle demonstrated over a live hotspot."),
-    ("Edge speed.", "0.28 ms median per loop, p99 1.42 ms; edge figure projected, not measured."),
+    ("Edge speed.", f"{MED_MS:.2f} ms median per loop, p99 {P99_MS:.2f} ms; edge figure projected, not measured."),
 ], lead_sz=12, body_sz=10.5, fill_to=6.10)
 pairs(s, RX, TOP + 0.36, CW, [
     ("ANFIS.", "Replace hand-tuned memberships with functions fitted to satellite burn history."),

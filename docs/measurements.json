@@ -1,0 +1,256 @@
+{
+  "generated_utc": "2026-11-11T16:36:52Z",
+  "python": "3.15.1",
+  "engine": {
+    "resolution": 500,
+    "input_sets": 16,
+    "output_universes": 3,
+    "rules": 10,
+    "alert_universe_samples": 13,
+    "alert_universe_step": 0.25,
+    "trees_requested": 48,
+    "trees_in_asset": 47,
+    "hotspots": 3,
+    "uav_keyframes": 14,
+    "frame_start": 0,
+    "frame_end": 620,
+    "fps": 30,
+    "clip_seconds": 20.67,
+    "waypoints_simulated": 12
+  },
+  "mission": [
+    {
+      "step": 0,
+      "x": 0.0,
+      "y": 0.0,
+      "z": 5.0,
+      "temperature": 29.1,
+      "humidity": 49.0,
+      "wind_speed": 24.9,
+      "vegetation_dryness": 39.8,
+      "fire_risk_index": 45.0,
+      "patrol_urgency": 20.1,
+      "suppression_alert": 1.0,
+      "alert_name": "WATCH"
+    },
+    {
+      "step": 1,
+      "x": 4.0,
+      "y": 5.0,
+      "z": 5.5,
+      "temperature": 28.3,
+      "humidity": 47.6,
+      "wind_speed": 27.5,
+      "vegetation_dryness": 39.9,
+      "fire_risk_index": 45.0,
+      "patrol_urgency": 20.1,
+      "suppression_alert": 1.0,
+      "alert_name": "WATCH"
+    },
+    {
+      "step": 2,
+      "x": 8.0,
+      "y": 10.0,
+      "z": 6.0,
+      "temperature": 32.9,
+      "humidity": 39.0,
+      "wind_speed": 34.2,
+      "vegetation_dryness": 55.2,
+      "fire_risk_index": 61.4,
+      "patrol_urgency": 47.0,
+      "suppression_alert": 1.68,
+      "alert_name": "WARNING"
+    },
+    {
+      "step": 3,
+      "x": 13.5,
+      "y": 15.5,
+      "z": 5.0,
+      "temperature": 42.8,
+      "humidity": 18.9,
+      "wind_speed": 45.2,
+      "vegetation_dryness": 86.8,
+      "fire_risk_index": 91.4,
+      "patrol_urgency": 89.5,
+      "suppression_alert": 2.826,
+      "alert_name": "CRITICAL"
+    },
+    {
+      "step": 4,
+      "x": 15.0,
+      "y": 17.0,
+      "z": 4.5,
+      "temperature": 43.4,
+      "humidity": 21.7,
+      "wind_speed": 45.3,
+      "vegetation_dryness": 85.8,
+      "fire_risk_index": 84.3,
+      "patrol_urgency": 79.0,
+      "suppression_alert": 2.494,
+      "alert_name": "WARNING"
+    },
+    {
+      "step": 5,
+      "x": 10.0,
+      "y": 18.0,
+      "z": 6.5,
+      "temperature": 37.8,
+      "humidity": 28.8,
+      "wind_speed": 40.8,
+      "vegetation_dryness": 72.4,
+      "fire_risk_index": 71.3,
+      "patrol_urgency": 60.0,
+      "suppression_alert": 2.0,
+      "alert_name": "WARNING"
+    },
+    {
+      "step": 6,
+      "x": 0.0,
+      "y": 15.0,
+      "z": 7.0,
+      "temperature": 28.2,
+      "humidity": 46.4,
+      "wind_speed": 25.0,
+      "vegetation_dryness": 40.8,
+      "fire_risk_index": 45.0,
+      "patrol_urgency": 19.9,
+      "suppression_alert": 1.0,
+      "alert_name": "WATCH"
+    },
+    {
+      "step": 7,
+      "x": -10.0,
+      "y": 12.0,
+      "z": 6.0,
+      "temperature": 34.3,
+      "humidity": 39.9,
+      "wind_speed": 31.6,
+      "vegetation_dryness": 57.2,
+      "fire_risk_index": 71.2,
+      "patrol_urgency": 60.0,
+      "suppression_alert": 2.0,
+      "alert_name": "WARNING"
+    },
+    {
+      "step": 8,
+      "x": -17.5,
+      "y": 9.8,
+      "z": 4.5,
+      "temperature": 42.9,
+      "humidity": 18.7,
+      "wind_speed": 44.9,
+      "vegetation_dryness": 86.8,
+      "fire_risk_index": 91.4,
+      "patrol_urgency": 89.6,
+      "suppression_alert": 2.829,
+      "alert_name": "CRITICAL"
+    },
+    {
+      "step": 9,
+      "x": -10.0,
+      "y": 0.0,
+      "z": 6.0,
+      "temperature": 28.8,
+      "humidity": 47.6,
+      "wind_speed": 27.8,
+      "vegetation_dryness": 41.0,
+      "fire_risk_index": 45.0,
+      "patrol_urgency": 19.8,
+      "suppression_alert": 1.0,
+      "alert_name": "WATCH"
+    },
+    {
+      "step": 10,
+      "x": 0.0,
+      "y": -10.0,
+      "z": 6.5,
+      "temperature": 27.0,
+      "humidity": 48.0,
+      "wind_speed": 28.1,
+      "vegetation_dryness": 39.7,
+      "fire_risk_index": 45.0,
+      "patrol_urgency": 20.1,
+      "suppression_alert": 1.0,
+      "alert_name": "WATCH"
+    },
+    {
+      "step": 11,
+      "x": 7.8,
+      "y": -19.5,
+      "z": 5.0,
+      "temperature": 43.1,
+      "humidity": 18.9,
+      "wind_speed": 42.4,
+      "vegetation_dryness": 88.5,
+      "fire_risk_index": 91.5,
+      "patrol_urgency": 89.7,
+      "suppression_alert": 2.831,
+      "alert_name": "CRITICAL"
+    }
+  ],
+  "defuzz": [
+    {
+      "scenario": "Benign Clear Day",
+      "inputs": [
+        22.0,
+        65.0,
+        12.0,
+        25.0
+      ],
+      "centroid": 17.5,
+      "bisector": 17.5,
+      "mom": 17.5
+    },
+    {
+      "scenario": "Dry Spring Heat",
+      "inputs": [
+        32.0,
+        40.0,
+        30.0,
+        55.0
+      ],
+      "centroid": 55.6,
+      "bisector": 55.6,
+      "mom": 56.2
+    },
+    {
+      "scenario": "High Hazard Drought",
+      "inputs": [
+        39.0,
+        22.0,
+        55.0,
+        82.0
+      ],
+      "centroid": 70.3,
+      "bisector": 70.3,
+      "mom": 70.6
+    },
+    {
+      "scenario": "Critical Wildfire",
+      "inputs": [
+        46.0,
+        12.0,
+        85.0,
+        95.0
+      ],
+      "centroid": 92.2,
+      "bisector": 92.5,
+      "mom": 95.1
+    }
+  ],
+  "latency": {
+    "benign_median_ms": 0.069,
+    "benign_p99_ms": 0.228,
+    "critical_median_ms": 0.071,
+    "critical_p99_ms": 0.186
+  },
+  "reference": {
+    "worst_deviation": 0.069,
+    "scenarios_passed": 9,
+    "scenarios_total": 9
+  },
+  "tests": {
+    "passed": 25,
+    "exit_code": 0
+  }
+}
