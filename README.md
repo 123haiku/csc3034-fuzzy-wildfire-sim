@@ -125,9 +125,11 @@ csc3034-fuzzy-wildfire-sim/
 │   └── test_reference_engine.py   # Engine vs scikit-fuzzy agreement per scenario
 ├── tools/
 │   ├── verify_values.py           # Diffs the shipped poster/report/deck against the measurement
+│   ├── audit_repo.py              # Structure audit: linked paths, deliverables, report sections
 │   ├── report/                    # Diagnostics used while writing the report
 │   │   ├── query_scenarios.py     # Runs one set of inputs through the engine
 │   │   ├── rule_trace.py          # Per-rule firing strengths for a scenario
+│   │   ├── check_citations.py     # Every reference entry cited, no dangling citation
 │   │   └── audit_report_docx.py   # Heading shape, rendering defects, vague wording
 │   └── presentation/              # Poster + deck build pipeline (figures → pptx/pdf/poster)
 │       ├── README.md              # Rebuild commands and layout conventions
@@ -141,6 +143,7 @@ csc3034-fuzzy-wildfire-sim/
 │       └── verify_deck.py         # Assertion-based check of the .pptx and .pdf
 └── docs/
     ├── SUBMISSION.md                          # What is handed in, and how to rebuild it
+    ├── COMPLETENESS_AUDIT.md                  # Structure, deliverable and citation audit results
     ├── measurements.json                      # Every figure the deliverables quote
     ├── presentation/
     │   ├── CSC3034_Presentation_Slides.pptx  # 11-slide deck, notes on every slide

@@ -74,16 +74,19 @@ python -m src.fuzzy_system.reference_engine --tolerance 0.5
 python src/run_demo.py
 python -m src.fuzzy_system.isaac_sim_bridge --scenario worsening --steps 10
 python tools/report/audit_report_docx.py
+python tools/report/check_citations.py
+python tools/audit_repo.py
 python tools/verify_values.py
 ```
 
 Expected: 25 tests pass, the reference cross-check reports 9/9 scenarios within tolerance
 with a worst absolute deviation of 0.069, the report audit reports zero rendering defects,
-and the value check passes every required/stale/table assertion.
+every reference entry is cited in the body, the structure audit reports zero failures, and
+the value check passes every required/stale/table assertion.
 
 `tools/report/rule_trace.py --inputs T RH W F` prints the membership degrees and rule
 firing strengths behind any single reading, which is how the explainability claims in
-Section 5.1 are supported.
+Section 6.1 are supported.
 
 ## Not needed for submission
 

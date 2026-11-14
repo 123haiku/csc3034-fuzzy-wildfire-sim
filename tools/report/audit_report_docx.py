@@ -19,6 +19,13 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 REPO = Path(__file__).resolve().parent.parent.parent
 DOCX = REPO / "docs" / "report" / "CSC3034_Final_Report.docx"
 
+# UTF-8 bytes that were decoded as cp1252 and then shipped: 0xE2 0x80 0x94 -> "â€”".
+MOJIBAKE = re.compile(
+    "[\u00c2\u00c3\u00e2][\u0080-\u00bf\u0152\u0153\u0160\u0161\u0178\u017d\u017e"
+    "\u0192\u02c6\u02dc\u2013\u2014\u2018-\u201e\u2020-\u2022\u2026\u2030\u2039\u203a"
+    "\u20ac\u2122]"
+)
+
 # Phrases that usually signal a claim with no measurable content.
 VAGUE = [
     r"\bhighly (?:volatile|non-linear|complex|significant|effective)\b",
@@ -110,6 +117,8 @@ def main() -> int:
             defects.append(f"double space p{i}: {t[:80]}")
         if re.search(r"\b(?:Table|Figure) \d", t) and p.style.name.startswith("Heading"):
             defects.append(f"caption merged into heading p{i}: {t[:80]}")
+        if MOJIBAKE.search(t):
+            defects.append(f"mojibake (UTF-8 read as cp1252) p{i}: {t[:80]}")
     for d in defects[:40]:
         print("  " + d)
     print(f"  total: {len(defects)}")
