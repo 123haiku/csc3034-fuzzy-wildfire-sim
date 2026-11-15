@@ -519,22 +519,22 @@ def style_table(table, body_size: float, widths: Optional[List[float]] = None) -
 
 FIGURE_ANCHORS = {
     "*(Figure 1 below is generated": [
-        ("architecture_diagram.png", 6.2,
+        ("architecture_diagram.png", 6.0,
          "Figure 1: The three-module control loop. Synthetic telemetry crosses from the "
          "OpenUSD stage into the Mamdani engine, and the defuzzified consequents are written "
          "back onto the same stage."),
     ],
     "*(Figure 2 plots all seven": [
-        ("membership_functions.png", 6.3,
+        ("membership_functions.png", 5.9,
          "Figure 2: The seven linguistic variables of the controller. The first four panels "
          "are the inputs (temperature, humidity, wind, fuel dryness); the remaining panels are "
          "the three defuzzified outputs."),
-        ("output_membership_functions.png", 5.6,
+        ("output_membership_functions.png", 5.4,
          "Figure 3: The three output universes drawn separately, including the "
          "suppression-alert consequent whose tiers are inferred by the rule base."),
     ],
     "*(Figure 4 replays": [
-        ("mission_telemetry_dashboard.png", 6.3,
+        ("mission_telemetry_dashboard.png", 6.2,
          "Figure 4: Mission replay for seed = 0. Top left, the 3D flight path coloured by "
          "fire risk index over the three hotspots; the remaining panels are the four sensor "
          "series and the two actuation outputs across the 12 waypoints."),

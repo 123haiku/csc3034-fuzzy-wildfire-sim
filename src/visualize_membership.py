@@ -1,156 +1,121 @@
-"""Script to generate publication-grade membership function plots and control surface.
+"""Membership-function figures for the report, drawn at the size they are printed at.
 
-Outputs are saved in the `plots/` directory for inclusion in the 10-page report and A1 poster.
+The report places Figure 2 at 6.3 in and Figure 3 at 5.6 in, so both are drawn near that
+width: a 13 in canvas shrunk into a 6.3 in frame halved every label. Colours come from
+`fuzzy_system.palette`, the same NVIDIA ramp the deck and poster use.
 """
 
+from __future__ import annotations
+
 import os
+
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 
 from fuzzy_system.controller import WildfireFuzzyController
+from fuzzy_system.palette import apply_report_style, ramp, style_axes
 
 
-def plot_membership_functions(output_dir: str = "plots"):
+def _plot_sets(ax, x, memberships, title, xlabel, ylabel) -> None:
+    for colour, (name, mf) in zip(ramp(len(memberships)), memberships.items()):
+        ax.plot(x, mf, label=name.replace("_", " ").capitalize(), color=colour,
+                linewidth=1.9, solid_capstyle="round")
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    style_axes(ax)
+    # Below the axes, in columns: every curve spans the full x range, so an in-plot legend
+    # always hides part of one.
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.46),
+              ncol=min(4, len(memberships)), handlelength=1.2, columnspacing=0.9,
+              handletextpad=0.5, borderaxespad=0.0)
+
+
+def plot_membership_functions(output_dir: str = "plots") -> None:
+    """Seven universes plus a text panel: Figure 2 of the report."""
     os.makedirs(output_dir, exist_ok=True)
+    apply_report_style()
     c = WildfireFuzzyController()
 
-    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
-    fig, axes = plt.subplots(4, 2, figsize=(13, 12))
-    fig.suptitle("Fuzzy Linguistic Membership Functions (CSC3034)", fontsize=16, fontweight="bold")
-    # 1. Temperature
-    ax = axes[0, 0]
-    for name, mf in c.mf_temp.items():
-        ax.plot(c.x_temp, mf, label=name.capitalize(), linewidth=2)
-    ax.set_title("Input: Ambient Temperature (°C)")
-    ax.set_xlabel("Temperature (°C)")
-    ax.set_ylabel("Degree of Membership")
-    ax.legend()
+    fig, axes = plt.subplots(4, 2, figsize=(6.6, 9.0))
+    fig.suptitle("Fuzzy Linguistic Membership Functions", fontsize=9.5, fontweight="bold",
+                 color="#0A0A0A")
 
-    # 2. Humidity
-    ax = axes[0, 1]
-    for name, mf in c.mf_humidity.items():
-        ax.plot(c.x_humidity, mf, label=name.replace("_", " ").capitalize(), linewidth=2)
-    ax.set_title("Input: Relative Humidity (%)")
-    ax.set_xlabel("Humidity (%)")
-    ax.set_ylabel("Degree of Membership")
-    ax.legend()
+    panels = [
+        (axes[0, 0], c.x_temp, c.mf_temp, "Input: Ambient Temperature",
+         "Temperature (\u00b0C)", "Degree of membership"),
+        (axes[0, 1], c.x_humidity, c.mf_humidity, "Input: Relative Humidity",
+         "Humidity (%)", "Degree of membership"),
+        (axes[1, 0], c.x_wind, c.mf_wind, "Input: Wind Speed",
+         "Wind speed (km/h)", "Degree of membership"),
+        (axes[1, 1], c.x_fuel, c.mf_fuel, "Input: Vegetation / Fuel Dryness",
+         "Dryness (%)", "Degree of membership"),
+        (axes[2, 0], c.x_risk, c.mf_risk, "Output 1: Fire Risk Index",
+         "Risk score (0-100)", "Degree of membership"),
+        (axes[2, 1], c.x_speed, c.mf_speed, "Output 2: UAV Patrol Urgency",
+         "Speed actuation (%)", "Degree of membership"),
+    ]
+    for ax, x, memberships, title, xlabel, ylabel in panels:
+        _plot_sets(ax, x, memberships, title, xlabel, ylabel)
 
-    # 3. Wind Speed
-    ax = axes[1, 0]
-    for name, mf in c.mf_wind.items():
-        ax.plot(c.x_wind, mf, label=name.capitalize(), linewidth=2)
-    ax.set_title("Input: Wind Speed (km/h)")
-    ax.set_xlabel("Wind Speed (km/h)")
-    ax.set_ylabel("Degree of Membership")
-    ax.legend()
-
-    # 4. Vegetation Dryness
-    ax = axes[1, 1]
-    for name, mf in c.mf_fuel.items():
-        ax.plot(c.x_fuel, mf, label=name.capitalize(), linewidth=2)
-    ax.set_title("Input: Vegetation / Fuel Dryness (%)")
-    ax.set_xlabel("Dryness (%)")
-    ax.set_ylabel("Degree of Membership")
-    ax.legend()
-
-    # 5. Output: Fire Risk Index
-    ax = axes[2, 0]
-    for name, mf in c.mf_risk.items():
-        ax.plot(c.x_risk, mf, label=name.capitalize(), linewidth=2)
-    ax.set_title("Output: Fire Risk Index (FRI)")
-    ax.set_xlabel("Risk Score (0 - 100)")
-    ax.set_ylabel("Degree of Membership")
-    ax.legend()
-
-    # 6. Output: Drone Patrol Urgency / Speed
-    ax = axes[2, 1]
-    for name, mf in c.mf_speed.items():
-        ax.plot(c.x_speed, mf, label=name.capitalize(), linewidth=2)
-    ax.set_title("Output: UAV Patrol Urgency / Speed (%)")
-    ax.set_xlabel("Speed Actuation (%)")
-    ax.set_ylabel("Degree of Membership")
-    ax.legend()
-
-    # 7. Output: Suppression Alert Level
     ax = axes[3, 0]
-    for name, mf in c.mf_alert.items():
-        ax.plot(c.x_alert, mf, label=name.replace("_", " ").capitalize(), linewidth=2)
-    ax.set_title("Output: Suppression Alert Level")
-    ax.set_xlabel("Alert Level (0 Advisory | 1 Watch | 2 Warning | 3 Evacuate/Suppress)")
+    _plot_sets(ax, c.x_alert, c.mf_alert, "Output 3: Suppression Alert Level",
+               "Alert level (0-3)", "Degree of membership")
     ax.set_xlim(0, 3)
     ax.set_xticks([0, 1, 2, 3])
-    ax.set_ylabel("Degree of Membership")
-    ax.legend(loc="upper right")
 
-    # 8. Output structure summary
     ax = axes[3, 1]
     ax.axis("off")
-    ax.set_title("Output Structure")
+    ax.set_title("Output structure")
     lines = [
-        "Fire Risk Index    [0, 100]     4 sets, centroid",
-        "Patrol Urgency     [0, 100] %   3 sets, centroid",
-        "Suppression Alert  [0, 3]       4 sets, centroid",
+        "Fire risk index    [0, 100]     4 sets",
+        "Patrol urgency     [0, 100] %   3 sets",
+        "Suppression alert  [0, 3]       4 sets",
         "",
-        "Every rule fires one consequent in",
-        "each of the three output universes.",
-        "The alert tier is round(alert value),",
-        "not a threshold on the risk index.",
+        "Every rule fires one consequent",
+        "in each of the three universes.",
+        "The alert tier is round(A*), not",
+        "a threshold on the risk index.",
     ]
-    ax.text(0.02, 0.95, "\n".join(lines), va="top", ha="left", fontsize=10.5, family="monospace")
+    ax.text(0.02, 0.88, "\n".join(lines), va="top", ha="left", fontsize=6.6,
+            family="monospace", color="#1F1F1F", linespacing=1.45)
 
-    plt.tight_layout()
-    chart_path = os.path.join(output_dir, "membership_functions.png")
-    plt.savefig(chart_path, dpi=300)
-    plt.close()
-    print(f"[Plot Generated] Membership functions saved to {chart_path}")
+    fig.tight_layout(rect=(0, 0, 1, 0.975), h_pad=1.8, w_pad=1.2)
+    path = os.path.join(output_dir, "membership_functions.png")
+    fig.savefig(path, dpi=300)
+    plt.close(fig)
+    print(f"[Plot Generated] Membership functions saved to {path}")
 
 
-def plot_output_membership_functions(output_dir: str = "plots"):
-    """Plots the three output universes side by side, including the alert consequent."""
+def plot_output_membership_functions(output_dir: str = "plots") -> None:
+    """The three output universes stacked: Figure 3 of the report."""
     os.makedirs(output_dir, exist_ok=True)
+    apply_report_style()
     c = WildfireFuzzyController()
 
-    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
-    fig, axes = plt.subplots(3, 1, figsize=(11, 12))
-    fig.suptitle("Fuzzy Output Universes: Risk, Throttle, Suppression Alert", fontsize=16, fontweight="bold")
+    fig, axes = plt.subplots(3, 1, figsize=(6.2, 8.4))
+    fig.suptitle("Fuzzy Output Universes: Risk, Throttle, Suppression Alert",
+                 fontsize=9.5, fontweight="bold", color="#0A0A0A")
 
-    # 1. Fire Risk Index
-    ax = axes[0]
-    for name, mf in c.mf_risk.items():
-        ax.plot(c.x_risk, mf, label=name.capitalize(), linewidth=2)
-    ax.set_title("Output 1: Fire Risk Index (FRI)")
-    ax.set_xlabel("Risk Score (0 - 100)")
-    ax.set_ylabel("Degree of Membership")
-    ax.set_ylim(-0.05, 1.08)
-    ax.legend(loc="upper right")
+    _plot_sets(axes[0], c.x_risk, c.mf_risk, "Output 1: Fire Risk Index",
+               "Risk score (0-100)", "Degree of membership")
+    _plot_sets(axes[1], c.x_speed, c.mf_speed, "Output 2: UAV Patrol Urgency / Speed",
+               "Speed actuation (%)", "Degree of membership")
+    _plot_sets(axes[2], c.x_alert, c.mf_alert, "Output 3: Suppression Alert Level",
+               "Alert level (0 Advisory | 1 Watch | 2 Warning | 3 Evacuate)",
+               "Degree of membership")
+    axes[2].set_xlim(0, 3)
+    axes[2].set_xticks([0, 1, 2, 3])
+    for ax in axes:
+        ax.set_ylim(-0.05, 1.08)
 
-    # 2. UAV Patrol Urgency / Speed
-    ax = axes[1]
-    for name, mf in c.mf_speed.items():
-        ax.plot(c.x_speed, mf, label=name.replace("_", " ").capitalize(), linewidth=2)
-    ax.set_title("Output 2: UAV Patrol Urgency / Speed")
-    ax.set_xlabel("Speed Actuation (%)")
-    ax.set_ylabel("Degree of Membership")
-    ax.set_ylim(-0.05, 1.08)
-    ax.legend(loc="upper right")
-
-    # 3. Suppression Alert Level
-    ax = axes[2]
-    for name, mf in c.mf_alert.items():
-        ax.plot(c.x_alert, mf, label=name.replace("_", " ").capitalize(), linewidth=2)
-    ax.set_title("Output 3: Suppression Alert Level")
-    ax.set_xlabel("Alert Level (0 Advisory | 1 Watch | 2 Warning | 3 Evacuate/Suppress)")
-    ax.set_ylabel("Degree of Membership")
-    ax.set_xlim(0, 3)
-    ax.set_xticks([0, 1, 2, 3])
-    ax.set_ylim(-0.05, 1.08)
-    ax.legend(loc="upper right")
-
-    plt.tight_layout()
-    chart_path = os.path.join(output_dir, "output_membership_functions.png")
-    plt.savefig(chart_path, dpi=300)
-    plt.close()
-    print(f"[Plot Generated] Output membership functions saved to {chart_path}")
+    fig.tight_layout(rect=(0, 0, 1, 0.965), h_pad=1.6)
+    path = os.path.join(output_dir, "output_membership_functions.png")
+    fig.savefig(path, dpi=300)
+    plt.close(fig)
+    print(f"[Plot Generated] Output membership functions saved to {path}")
 
 
 if __name__ == "__main__":

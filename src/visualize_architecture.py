@@ -29,11 +29,11 @@ from fuzzy_system.controller import WildfireFuzzyController  # noqa: E402
 PLOTS_DIR = REPO_ROOT / "plots"
 MEASUREMENTS = REPO_ROOT / "docs" / "measurements.json"
 
-INK = "#0F172A"
-BODY = "#1E293B"
-ACCENT = "#EA580C"
-RULE = "#94A3B8"
-PANEL = "#F8FAFC"
+INK = "#0A0A0A"
+BODY = "#1F1F1F"
+ACCENT = "#76B900"
+RULE = "#B8BDB2"
+PANEL = "#F8FAF4"
 
 
 def _measured() -> dict:

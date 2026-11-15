@@ -77,6 +77,8 @@ Deliverables inspected:
 | Defuzzification table split across pages | rendered page 10: one row on page 10, three on page 11 | `cantSplit` on every body row, `keep_with_next` on figure paragraphs; Table 3 now sits whole on page 11 |
 | Mission-log column widths forced every coordinate onto three lines and pushed row 11 onto the next page | DOCX table geometry: 0.65 in for every column | Fixed widths for the 10-column table (position 1.10 in), rows drop to two lines |
 | Template line endings were doubled to blank lines between table rows by a text-mode rewrite | parser produced 12 single-row "tables" instead of one 12-row table | Template restored from git, rewritten as bytes with LF only, and the parse re-checked |
+| Report figures used the matplotlib default palette (blue / orange / green / red) while the deck and poster used NVIDIA black and green | rendered pages 6 and 11 | `src/fuzzy_system/palette.py` defines the NVIDIA ramp, and the three figure scripts draw from it; membership legends moved below each axes because every curve spans the full x range |
+| Report figures were drawn on 13-16 in canvases and shrunk into 6 in frames, halving every label | figure pixel sizes 3900 x 3600 and 4800 x 3000 against a 6.3 in placement | Redrawn at print size: 1980 x 2700, 1860 x 2520 and 2100 x 1620, with 6.5 pt ticks and 8 pt axis titles |
 
 Verification after the pass: `pytest` 25 passed, `verify_values.py` 35 passed, `audit_report_docx.py`
 0 rendering defects, `check_citations.py` no uncited entry, `audit_repo.py` 0 failures,
@@ -96,9 +98,10 @@ Verification after the pass: `pytest` 25 passed, `verify_values.py` 35 passed, `
 - **`docs/_legacy/` carries a generator that writes to an absolute path on the original authoring
   machine.** It is documented in `docs/_legacy/README.md` and excluded by the audit, but deleting the
   directory before archival submission removes the trap.
-- **Report figures use the matplotlib default palette.** The deck and poster use the NVIDIA palette,
-  so a figure lifted from the report into the deck would change colour. Cosmetic, not a submission
-  blocker.
+- **Report figures now use the NVIDIA palette.** `src/fuzzy_system/palette.py` holds the ramp
+  (lime to olive to black, severity by luminance) shared by `visualize_membership.py`,
+  `visualize_mission_telemetry.py` and `visualize_architecture.py`, so the report, the deck and the
+  poster no longer disagree on colour.
 - **Deadline.** README states 15 November 2026, 23:59, which is the day after this audit.
 
 ## Reproduce this audit

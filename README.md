@@ -110,6 +110,7 @@ csc3034-fuzzy-wildfire-sim/
 │   ├── fuzzy_system/
 │   │   ├── __init__.py
 │   │   ├── controller.py          # Core Mamdani Fuzzy Inference Engine (3 outputs)
+│   │   ├── palette.py             # NVIDIA plotting palette shared by the report figures
 │   │   ├── isaac_sim_bridge.py    # Interface bridge for NVIDIA Isaac Sim / Action Graph
 │   │   ├── reference_engine.py    # scikit-fuzzy cross-check of the hand-written engine
 │   │   └── defuzz_benchmark.py    # centroid / bisector / MOM benchmark, report Table 3
