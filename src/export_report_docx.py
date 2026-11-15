@@ -284,6 +284,11 @@ GENERATED_TABLES = {
     "{{TABLE_DEFUZZ}}": (defuzz_table, 4),
 }
 
+# The 12-waypoint log has one wide column and nine narrow ones; autofit gave the position
+# column 0.65 in, which wrapped every coordinate onto three lines and pushed the table over
+# a page break. Fixed widths keep rows to two lines and the table on one page.
+MISSION_WIDTHS = [0.40, 1.10, 0.50, 0.55, 0.70, 0.50, 0.44, 0.62, 0.52, 0.80]
+
 
 # ---------------------------------------------------------------------------
 # Markdown block parsing
@@ -382,6 +387,7 @@ def parse_blocks(markdown: str) -> List[Block]:
                 or t.startswith("```")
                 or t.startswith("#")
                 or t.startswith("$$")
+                or t == "---"
                 or re.match(r"^[*+-]\s+", t)
                 or re.match(r"^\d+\.\s+", t)
             ):
@@ -450,10 +456,18 @@ def add_field(paragraph, instruction: str) -> None:
 
 
 def configure_page(section) -> None:
+    # A4, the paper size every Sunway submission template assumes.
+    section.page_width = Inches(8.27)
+    section.page_height = Inches(11.69)
     section.top_margin = Inches(1.0)
     section.bottom_margin = Inches(0.9)
-    section.left_margin = Inches(0.95)
-    section.right_margin = Inches(0.95)
+    section.left_margin = Inches(0.9)
+    section.right_margin = Inches(0.9)
+
+    # The cover carries no running footer, so page numbering starts on the abstract.
+    section.different_first_page_header_footer = True
+    first = section.first_page_footer.paragraphs[0]
+    first.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     footer = section.footer.paragraphs[0]
     footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -475,13 +489,16 @@ def set_repeat_header(row) -> None:
     tr_pr.append(cant_split)
 
 
-def style_table(table, body_size: float) -> None:
+def style_table(table, body_size: float, widths: Optional[List[float]] = None) -> None:
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    table.autofit = True
+    table.autofit = widths is None
     for r_idx, row in enumerate(table.rows):
         if r_idx == 0:
             set_repeat_header(row)
+        else:
+            # No row may straddle a page break: a split row reads as two partial rows.
+            row._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))
         for cell in row.cells:
             for paragraph in cell.paragraphs:
                 paragraph.paragraph_format.space_before = Pt(1)
@@ -490,6 +507,10 @@ def style_table(table, body_size: float) -> None:
                     run.font.size = Pt(body_size)
                     if r_idx == 0:
                         run.font.bold = True
+    if widths:
+        for row in table.rows:
+            for cell, width in zip(row.cells, widths):
+                cell.width = Inches(width)
 
 
 # ---------------------------------------------------------------------------
@@ -534,6 +555,7 @@ def add_figure(doc, filename: str, width_in: float, caption: str) -> None:
     picture_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     picture_p.paragraph_format.space_before = Pt(6)
     picture_p.paragraph_format.space_after = Pt(2)
+    picture_p.paragraph_format.keep_with_next = True
     picture_p.add_run().add_picture(str(path), width=Inches(width_in))
 
     caption_p = doc.add_paragraph()
@@ -560,6 +582,7 @@ def create_report_docx() -> Path:
     # ---- Title block -----------------------------------------------------
     title_p = doc.add_paragraph()
     title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_p.paragraph_format.space_before = Pt(110)
     title_p.paragraph_format.space_after = Pt(8)
     title_run = title_p.add_run(
         "Intelligent Forest Fire Risk Assessment and UAV Dispatch\n"
@@ -608,10 +631,11 @@ def create_report_docx() -> Path:
         r2.font.size = Pt(8.5)
         r2.font.color.rgb = MUTED
 
-    doc.add_paragraph()
-
-    # ---- Body ------------------------------------------------------------
-    blocks = parse_blocks(REPORT_MD.read_text(encoding="utf-8"))
+    # The cover owns its own page; the abstract starts on page 2.
+    doc.add_page_break()
+    # utf-8-sig drops a byte-order mark; a BOM left in place turns the leading "#" title
+    # into prose and ships the raw Markdown heading in the document body.
+    blocks = parse_blocks(REPORT_MD.read_text(encoding="utf-8-sig"))
     pending_caption: Optional[str] = None
     first_heading_seen = False
 
@@ -732,7 +756,8 @@ def create_report_docx() -> Path:
                     if c_idx > 0:
                         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     add_runs(para, row[c_idx] if c_idx < len(row) else "")
-            style_table(table, 7.5 if n_cols >= 9 else 8.5)
+            widths = MISSION_WIDTHS if n_cols == 10 and cells[0][0].strip() == "WP" else None
+            style_table(table, 7.5 if n_cols >= 9 else 8.5, widths=widths)
             doc.add_paragraph()
             continue
 

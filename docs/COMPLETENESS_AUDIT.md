@@ -33,7 +33,7 @@ Deliverables inspected:
 | A1 poster | `docs/poster/CSC3034_A1_Poster.pdf` | 1 page, 1684 x 2385 pt = 594 x 841 mm, `%PDF` signature |
 | Poster raster | `docs/poster/CSC3034_A1_Poster_300DPI.png` | 3.9 MB, tracked |
 | Report | `docs/report/CSC3034_Final_Report.docx` | 2.7 MB, OOXML zip intact, 13 pages when exported |
-| Report PDF | `docs/report/CSC3034_Final_Report.pdf` | 13 pages, Letter, text extractable, 0 mojibake |
+| Report PDF | `docs/report/CSC3034_Final_Report.pdf` | 13 pages, A4 (595 x 842 pt), text extractable, 0 mojibake |
 | Deck | `docs/presentation/CSC3034_Presentation_Slides.pptx` / `.pdf` | 11 slides, 13.333 x 7.5 in, 11 PDF pages |
 | Proposal | `docs/proposal/CSC3034_Group_Proposal_Form.docx` / `.md` | zip intact, Markdown source present |
 | Stage asset | `assets/wildfire_forest_uav_stage.usda` | 75 KB OpenUSD layer, referenced by the stage builder |
@@ -65,6 +65,23 @@ Deliverables inspected:
 6. **DOCX and PDF were out of step after the text change.** Rebuilt both from the template so they
    describe the same document: 13 pages each, same section numbering, same table and figure order.
 
+## Typography pass (second pass, same day)
+
+| Defect | Evidence | Fix |
+|---|---|---|
+| Raw Markdown heading shipped in the body: a line reading `# Intelligent Forest Fire Risk Assessment ...` sat between the cover and the abstract | rendered page 1, and paragraph 4 of the DOCX | The template began with a UTF-8 BOM, so the `#` line missed the heading pattern and fell through as prose. Builder now reads `utf-8-sig` and the BOM was stripped from the file |
+| Trailing `---` welded onto the keywords paragraph | rendered page 1: "Sustainable Development Goals. ---" | The block parser's continuation rule did not break on a horizontal rule; `t == "---"` added to the break list |
+| Page size was US Letter | DOCX geometry: 8.50 x 11.00 in | Set to A4 8.27 x 11.69 in, margins 1.0 / 0.9 / 0.9 / 0.9; content width 6.47 in still clears the 6.3 in figures |
+| Cover shared page 1 with the abstract, and carried the running footer | rendered page 1 | Page break after the team table, `different_first_page_header_footer` with an empty first-page footer, title block given 110 pt of space above |
+| Rule-base table had no caption, so Table 2 and Table 3 had no Table 1 | caption scan found Figure 1-4, Table 2, Table 3 only | `**Table 1: The ten Mamdani rules ...**` added ahead of the table; the builder renders it in the same italic caption style |
+| Defuzzification table split across pages | rendered page 10: one row on page 10, three on page 11 | `cantSplit` on every body row, `keep_with_next` on figure paragraphs; Table 3 now sits whole on page 11 |
+| Mission-log column widths forced every coordinate onto three lines and pushed row 11 onto the next page | DOCX table geometry: 0.65 in for every column | Fixed widths for the 10-column table (position 1.10 in), rows drop to two lines |
+| Template line endings were doubled to blank lines between table rows by a text-mode rewrite | parser produced 12 single-row "tables" instead of one 12-row table | Template restored from git, rewritten as bytes with LF only, and the parse re-checked |
+
+Verification after the pass: `pytest` 25 passed, `verify_values.py` 35 passed, `audit_report_docx.py`
+0 rendering defects, `check_citations.py` no uncited entry, `audit_repo.py` 0 failures,
+`verify_deck.py` 16 passed. Report is 13 pages A4, cover on page 1, references end on page 13.
+
 ## Still open, none blocking submission
 
 - **No LICENSE file.** The repository declares no licence. Add one only if the course or the team
@@ -79,8 +96,9 @@ Deliverables inspected:
 - **`docs/_legacy/` carries a generator that writes to an absolute path on the original authoring
   machine.** It is documented in `docs/_legacy/README.md` and excluded by the audit, but deleting the
   directory before archival submission removes the trap.
-- **Report page size is US Letter.** Switch the section to A4 if the department template requires it;
-  nothing else in the document depends on page geometry.
+- **Report figures use the matplotlib default palette.** The deck and poster use the NVIDIA palette,
+  so a figure lifted from the report into the deck would change colour. Cosmetic, not a submission
+  blocker.
 - **Deadline.** README states 15 November 2026, 23:59, which is the day after this audit.
 
 ## Reproduce this audit

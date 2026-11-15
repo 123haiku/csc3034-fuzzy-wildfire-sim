@@ -25,7 +25,7 @@ SOURCES = [
 ]
 
 for path in SOURCES:
-    text = path.read_text(encoding="utf-8")
+    text = path.read_bytes().decode("utf-8-sig")
     before = text
     counts = {}
     for bad, good in PAIRS.items():
@@ -34,7 +34,8 @@ for path in SOURCES:
             counts[repr(bad)] = n
             text = text.replace(bad, good)
     if text != before:
-        path.write_text(text, encoding="utf-8")
+        # Write bytes, never text mode: newline translation rewrites CRLF as an extra blank line.
+        path.write_bytes(text.encode("utf-8"))
         print(f"{path.relative_to(ROOT)}: repaired {counts}")
     else:
         print(f"{path.relative_to(ROOT)}: clean")

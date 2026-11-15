@@ -1,4 +1,4 @@
-﻿# Intelligent Forest Fire Risk Assessment and UAV Dispatch Using Mamdani Fuzzy Logic in NVIDIA Isaac Sim
+# Intelligent Forest Fire Risk Assessment and UAV Dispatch Using Mamdani Fuzzy Logic in NVIDIA Isaac Sim
 
 **Course**: CSC3034 Computational Intelligence  
 **Institution**: School of Mathematical Sciences & Computing, Sunway University  
@@ -134,6 +134,8 @@ $\text{round}(A^*)$ clamped to $[0, 3]$; the continuous $A^*$ is the primary out
 
 ### 3.4 Fuzzy Rule Base & Inference Logic
 The rule matrix takes its four antecedents from the structure of the McArthur Forest Fire Danger Index [3] (temperature, relative humidity, wind, fuel dryness) and its direction of effect, then assigns the linguistic bands by hand. It is not a reimplementation of McArthur: no index value is computed and no McArthur coefficient is used. What the rule base encodes is the sign of each dependence — higher temperature, lower humidity, higher wind and drier fuel each push the consequents up, and the rules that combine drought-stressed fuel with wind dominate the top of the range. Representative rules include:
+
+**Table 1: The ten Mamdani rules. Each antecedent is a conjunction of linguistic terms, and every rule fires one term in each of the three output universes.**
 
 | Rule ID | Temperature ($T$) | Humidity ($RH$) | Wind Speed ($W$) | Fuel Dryness ($F$) | Fire Risk | Patrol Urgency | Alert Level |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
