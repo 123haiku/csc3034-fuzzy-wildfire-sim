@@ -252,12 +252,11 @@ def substitute(text: str) -> str:
 
 
 def mission_table() -> List[List[str]]:
-    rows = [["WP", "Position (X, Y, Z)", "T (\u00b0C)", "RH (%)", "W (km/h)",
-             "F (%)", "FRI", "Urgency (%)", "Alert", "Status"]]
+    rows = [["WP", "T (\u00b0C)", "RH (%)", "W (km/h)", "F (%)", "FRI",
+             "Urgency (%)", "Alert", "Status"]]
     for m in MEASURED["mission"]:
         rows.append([
             f"{m['step']:02d}",
-            f"({m['x']:.1f}, {m['y']:.1f}, {m['z']:.1f})",
             f"{m['temperature']:.1f}",
             f"{m['humidity']:.1f}",
             f"{m['wind_speed']:.1f}",
@@ -280,14 +279,13 @@ def defuzz_table() -> List[List[str]]:
 
 
 GENERATED_TABLES = {
-    "{{TABLE_MISSION}}": (mission_table, 10),
+    "{{TABLE_MISSION}}": (mission_table, 9),
     "{{TABLE_DEFUZZ}}": (defuzz_table, 4),
 }
 
-# The 12-waypoint log has one wide column and nine narrow ones; autofit gave the position
-# column 0.65 in, which wrapped every coordinate onto three lines and pushed the table over
-# a page break. Fixed widths keep rows to two lines and the table on one page.
-MISSION_WIDTHS = [0.40, 1.10, 0.50, 0.55, 0.70, 0.50, 0.44, 0.62, 0.52, 0.80]
+# Nine columns inside a 6.47 in text block. The mission table has no coordinate column: the
+# 3D path is Figure 3, and carrying x/y/z forced every row onto two or three lines.
+MISSION_WIDTHS = [0.50, 0.62, 0.66, 0.75, 0.62, 0.60, 0.80, 0.68, 1.00]
 
 
 # ---------------------------------------------------------------------------
@@ -519,24 +517,22 @@ def style_table(table, body_size: float, widths: Optional[List[float]] = None) -
 
 FIGURE_ANCHORS = {
     "*(Figure 1 below is generated": [
-        ("architecture_diagram.png", 6.0,
+        ("architecture_diagram.png", 5.0,
          "Figure 1: The three-module control loop. Synthetic telemetry crosses from the "
          "OpenUSD stage into the Mamdani engine, and the defuzzified consequents are written "
          "back onto the same stage."),
     ],
     "*(Figure 2 plots all seven": [
-        ("membership_functions.png", 5.9,
-         "Figure 2: The seven linguistic variables of the controller. The first four panels "
-         "are the inputs (temperature, humidity, wind, fuel dryness); the remaining panels are "
-         "the three defuzzified outputs."),
-        ("output_membership_functions.png", 5.4,
-         "Figure 3: The three output universes drawn separately, including the "
-         "suppression-alert consequent whose tiers are inferred by the rule base."),
+        ("membership_functions.png", 6.1,
+         "Figure 2: The seven linguistic universes of the controller. The first four panels "
+         "are the inputs (temperature, humidity, wind, fuel dryness); the last three are the "
+         "defuzzified outputs, including the suppression alert whose tiers are inferred by the "
+         "rule base rather than thresholded from the risk index."),
     ],
-    "*(Figure 4 replays": [
-        ("mission_telemetry_dashboard.png", 6.2,
-         "Figure 4: Mission replay for seed = 0. Top left, the 3D flight path coloured by "
-         "fire risk index over the three hotspots; the remaining panels are the four sensor "
+    "*(Figure 3 replays": [
+        ("mission_telemetry_dashboard.png", 6.1,
+         "Figure 3: Mission replay for seed = 0. Top left, the 3D flight path coloured by "
+         "fire risk index over the three hotspots; the remaining panels are the two sensor "
          "series and the two actuation outputs across the 12 waypoints."),
     ],
 }
@@ -562,7 +558,7 @@ def add_figure(doc, filename: str, width_in: float, caption: str) -> None:
     caption_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     caption_p.paragraph_format.space_after = Pt(10)
     run = caption_p.add_run(caption)
-    run.font.size = Pt(9)
+    run.font.size = Pt(9.5)
     run.font.italic = True
     run.font.color.rgb = MUTED
 
@@ -709,7 +705,7 @@ def create_report_docx() -> Path:
                 caption_p.paragraph_format.space_after = Pt(3)
                 caption_p.paragraph_format.keep_with_next = True
                 run = caption_p.add_run(pending_caption)
-                run.font.size = Pt(8.5)
+                run.font.size = Pt(9.5)
                 run.font.italic = True
                 run.font.color.rgb = MUTED
                 pending_caption = None
@@ -724,7 +720,14 @@ def create_report_docx() -> Path:
                     if c_idx > 0:
                         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     add_runs(para, value)
-            style_table(table, 7.5 if n_cols >= 9 else 8.5)
+            style_table(table, 9.5)
+            # The input-parameter table carries sentence-like cells; centring them reads as
+            # ragged numbers, so the whole table runs left.
+            if cells[0][0].strip().startswith("Variable"):
+                for row in table.rows:
+                    for cell in row.cells:
+                        for para in cell.paragraphs:
+                            para.alignment = WD_ALIGN_PARAGRAPH.LEFT
             doc.add_paragraph()
             continue
 
@@ -741,7 +744,7 @@ def create_report_docx() -> Path:
                 caption_p.paragraph_format.space_after = Pt(3)
                 caption_p.paragraph_format.keep_with_next = True
                 run = caption_p.add_run(pending_caption)
-                run.font.size = Pt(8.5)
+                run.font.size = Pt(9.5)
                 run.font.italic = True
                 run.font.color.rgb = MUTED
                 pending_caption = None
@@ -756,8 +759,8 @@ def create_report_docx() -> Path:
                     if c_idx > 0:
                         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     add_runs(para, row[c_idx] if c_idx < len(row) else "")
-            widths = MISSION_WIDTHS if n_cols == 10 and cells[0][0].strip() == "WP" else None
-            style_table(table, 7.5 if n_cols >= 9 else 8.5, widths=widths)
+            widths = MISSION_WIDTHS if n_cols == 9 and cells[0][0].strip() == "WP" else None
+            style_table(table, 9.5, widths=widths)
             doc.add_paragraph()
             continue
 

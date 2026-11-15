@@ -86,7 +86,7 @@ the value check passes every required/stale/table assertion.
 
 `tools/report/rule_trace.py --inputs T RH W F` prints the membership degrees and rule
 firing strengths behind any single reading, which is how the explainability claims in
-Section 6.1 are supported.
+Section 3.4 are supported.
 
 ## Not needed for submission
 

@@ -247,7 +247,7 @@ changes, then rebuild the three deliverables.
 
 `verify_values.py` reads the built `.docx`, `.pptx` and poster `.html`, asserts the required
 figures are present, asserts superseded ones are gone, and compares the report's mission and
-defuzzification tables row by row against the measurement. It currently runs 35 checks.
+defuzzification tables row by row against the measurement. It currently runs 36 checks.
 
 ---
 

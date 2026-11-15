@@ -90,9 +90,10 @@ def check_report() -> None:
     print("    headings:")
     for style, text in heads:
         print(f"      {style:10} {text}")
+    # Section headings the Assignment 1 brief requires, plus the abstract and the reference list.
     required = [
-        "abstract", "introduction", "literature", "method", "result",
-        "discussion", "conclusion", "reference",
+        "abstract", "introduction", "problem definition", "existing solutions",
+        "system design", "evaluation", "case study", "discussion", "conclusion", "references",
     ]
     blob = " ".join(t.lower() for _, t in heads)
     for want in required:

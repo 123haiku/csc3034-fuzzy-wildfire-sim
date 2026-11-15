@@ -127,6 +127,14 @@ def main() -> int:
 
     check(mission_table is not None, "report: mission table present")
     if mission_table is not None:
+        # Column order is read from the header, so a change to the table layout cannot make the
+        # check pass against the wrong cell.
+        header = [c.text.strip() for c in mission_table.rows[0].cells]
+        columns = ["T (\u00b0C)", "RH (%)", "W (km/h)", "F (%)", "FRI",
+                   "Urgency (%)", "Alert"]
+        missing = [c for c in columns if c not in header]
+        check(not missing, f"report: mission table columns present {missing}")
+        order = [header.index(c) for c in columns] if not missing else []
         rows_ok = 0
         for row, expected in zip(mission_table.rows[1:], mission):
             cells = [c.text.strip() for c in row.cells]
@@ -139,7 +147,7 @@ def main() -> int:
                 f"{expected['patrol_urgency']:.1f}",
                 f"{expected['suppression_alert']:.3f}",
             ]
-            got = cells[2:9]
+            got = [cells[i] for i in order] if order else []
             if got == want:
                 rows_ok += 1
             else:

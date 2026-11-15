@@ -9,131 +9,81 @@
 ---
 
 ## Abstract
-Wildfires pose catastrophic ecological and atmospheric hazards, destroying terrestrial ecosystems and releasing stored carbon back into the atmosphere. Real-time fire risk assessment is difficult because the four variables that govern ignition — ambient temperature, relative humidity, localized wind velocity and fuel moisture — interact non-linearly, and no single one of them ranks two conditions correctly. Traditional binary alarm systems therefore fire on benign summer heat and stay silent when moderate conditions are compounded by high winds and drought-stressed undergrowth. 
+Wildfires destroy ecosystems and return stored carbon to the atmosphere, and the earlier a hotspot is reported the cheaper it is to contain. Detection is hard because temperature, humidity, wind and fuel moisture interact non-linearly: no single threshold ranks two conditions correctly. This paper presents an explainable Mamdani fuzzy inference system inside NVIDIA Isaac Sim that maps four environmental scalars into three defuzzified consequents — a Fire Risk Index, a UAV patrol urgency throttle, and a continuous suppression alert level — so an aerial patrol reacts to graded hazard instead of a binary alarm. A procedural OpenUSD forest with three thermal hotspots was built, and a deterministic 12-waypoint mission (seed 0) drives the patrol from $20.1\%$ throttle at benign waypoints to $89.5\%$ at the hotspot, with alert $2.826$ of $3$. The engine is validated against a scikit-fuzzy reference (worst deviation ${{reference.worst_deviation}}$ over {{reference.scenarios_total}} scenarios) and {{tests.passed}} unit tests, and costs ${{latency.benign_median_ms}}\ \text{ms}$ per evaluation loop. The work targets SDG 13 (Climate Action) and SDG 15 (Life on Land).
 
-This paper proposes an explainable **Mamdani Fuzzy Logic Inference System** coupled with **NVIDIA Isaac Sim (OpenUSD)** for dynamic forest fire risk estimation and autonomous unmanned aerial vehicle (UAV) surveillance response. The fuzzy controller maps four continuous environmental inputs into three defuzzified consequents: a normalized **Fire Risk Index (FRI)**, an autonomous **UAV Patrol Urgency Throttle**, and a continuous **Suppression Alert Level** on $[0, 3]$ whose tiers (Advisory, Watch, Warning, Evacuate/Suppress) are inferred by the rule base rather than thresholded from the risk index. A procedural 3D forest simulation stage was created in Isaac Sim containing forest terrain, varied vegetation moisture distributions, thermal wildfire hotspots, and an animated surveillance drone. Through a 12-waypoint simulated flight mission (seed $0$, so the log is reproducible), the controller moved from benign patrol ($20.1\%$ urgency, $\text{FRI}=45.0$, alert $1.000$) to emergency dispatch ($89.5\%$ urgency, $\text{FRI}=91.4$, alert $2.826$) within two waypoints of entering a hotspot radius; the largest throttle change between consecutive waypoints, $69.8$ points, occurs only on the step that leaves the second hazard radius. The inference engine was validated in two ways: {{tests.passed}} automated unit tests covering the scenario envelope, input boundaries and all three consequents, plus a per-scenario cross-check against the scikit-fuzzy reference implementation (worst deviation ${{reference.worst_deviation}}$ across {{reference.scenarios_total}} scenarios). The three defuzzification algorithms were also benchmarked, confirming **Centroid of Area** as the choice where output continuity matters. The system is presented in alignment with **United Nations Sustainable Development Goals 13 (Climate Action)** and **15 (Life on Land)**.
-
-**Keywords**: Computational Intelligence, Mamdani Fuzzy Inference, Wildfire Risk Modeling, Autonomous UAV Surveillance, NVIDIA Isaac Sim, OpenUSD, Sustainable Development Goals.
+**Keywords**: Computational Intelligence, Mamdani Fuzzy Inference, Wildfire Risk, UAV Surveillance, NVIDIA Isaac Sim, Sustainable Development Goals.
 ---
 
 ## 1. Introduction
 
-### 1.1 Background & Motivation
-Wildfires represent one of the most volatile and destructive natural hazards globally, and longer fire seasons have raised ignition frequency. Detection latency dominates containment cost: the earlier a hotspot is reported, the smaller — and cheaper — the response it needs. The design target adopted here is therefore a continuous risk estimate that updates at patrol cadence, rather than a single threshold that fires once.
+### 1.1 Problem Definition and Motivation
+Wildfires are among the most destructive natural hazards, and longer fire seasons have raised ignition frequency. Detection latency dominates containment cost: every minute between ignition and first report is paid for in hectares, in suppression budget, and in the carbon the fire returns to the atmosphere. The design target adopted here is therefore a continuous risk estimate that updates at patrol cadence, not a single alarm that fires once.
 
-However, remote forest telemetry arrives as four scalars whose effect on ignition is not additive, and no single threshold ranks them correctly:
-* A high ambient temperature ($38^\circ\text{C}$) in a tropical rain forest with $85\%$ relative humidity poses low immediate combustion hazard.
-* Conversely, a moderate temperature ($26^\circ\text{C}$) accompanied by $15\%$ relative humidity, severe wind gusts ($65\text{ km/h}$), and desiccated brush represents a critical firestorm risk.
+Remote forest telemetry arrives as four scalars whose effect on ignition is not additive, and no single threshold ranks them correctly:
+* A high ambient temperature ($38^\circ\text{C}$) in a tropical rain forest at $85\%$ relative humidity poses little immediate combustion hazard.
+* A moderate temperature ($26^\circ\text{C}$) with $15\%$ relative humidity, $65\text{ km/h}$ gusts and desiccated brush is a critical firestorm risk.
 
-The two readings differ by $12^\circ\text{C}$, yet the cooler one is the dangerous one: run through the controller below, the $38^\circ\text{C}$ / $85\%$ case scores $\text{FRI}=14.0$ (tier `NORMAL`) and the $26^\circ\text{C}$ / $15\%$ / $65\text{ km/h}$ case scores $\text{FRI}=71.4$ (tier `WARNING`), so any rule keyed on a single temperature threshold inverts the pair. The simulator reproduces this by construction: baseline conditions of $28^\circ\text{C}$, $48\%$ RH, $25\text{ km/h}$ and $40\%$ fuel dryness are displaced by hotspot proximity, adding up to $16^\circ\text{C}$, removing up to $32$ percentage points of humidity, adding $20\text{ km/h}$ of wind and $50$ points of fuel dryness inside a $12\text{ m}$ radius, with per-waypoint sensor jitter of $\pm1.0$ to $1.5^\circ\text{C}$, $\pm2\%$ RH, $\pm3$ to $4\text{ km/h}$ and $\pm1$ to $2$ points.
+The two readings differ by $12^\circ\text{C}$, yet the cooler one is the dangerous one: through the controller of Section 2 the $38^\circ\text{C}$ / $85\%$ case scores $\text{FRI}=14.0$ (`NORMAL`) and the $26^\circ\text{C}$ / $15\%$ / $65\text{ km/h}$ case scores $\text{FRI}=71.4$ (`WARNING`), so any rule keyed on temperature alone inverts the pair. A binary trigger such as "if $\text{Temp} > 40^\circ\text{C}$ then alarm" consequently fires on benign summer heat and stays silent when moderate conditions are compounded by wind and drought-stressed fuel. Fuzzy set theory answers exactly this: membership functions replace the comparison against a constant, so uncertainty is carried through the inference instead of being collapsed at the input [2].
 
-Binary threshold triggers (e.g., if $\text{Temp} > 40^\circ\text{C}$ then sound alarm) fail to capture these interdependent gradients, causing excessive false alarms or missed early-stage hazards. Fuzzy set theory provides the paradigm for this problem: it replaces the comparison against a constant with a membership function, so continuous linguistic uncertainty can be carried through the inference instead of being collapsed at the input [2].
+The work is aligned with two United Nations Sustainable Development Goals [6]:
+1. **SDG 13, Climate Action (Target 13.1)**: earlier aerial detection shortens the burn, and with it the greenhouse gas the fire releases.
+2. **SDG 15, Life on Land (Target 15.2)**: containment protects forest habitat, endangered wildlife and soil cover, and the patrol decision is auditable by the park authority that has to justify it.
 
-### 1.2 Alignment with UN Sustainable Development Goals (SDGs)
-This research is directly aligned with two United Nations Sustainable Development Goals:
-1. **SDG 13: Climate Action (Target 13.1)**: Minimizes massive greenhouse gas emissions produced by uncontrolled wildfires through proactive early aerial detection [6].
-2. **SDG 15: Life on Land (Target 15.2)**: Preserves forest ecosystems, protects endangered wildlife habitats, and combats soil degradation.
+### 1.2 Existing Solutions
+Three families of solutions are in operational use, and each leaves a gap this project targets.
 
-### 1.3 Contributions & Objectives
-The key objectives of this project are:
-1. To formulate a multi-variable Mamdani fuzzy inference system with four environmental inputs and three continuous control outputs.
-2. To construct an OpenUSD procedural forest simulation in NVIDIA Isaac Sim equipped with realistic terrain, varied fuel vegetation, and dynamic wildfire hotspots.
-3. To establish a real-time software bridge linking Isaac Sim synthetic sensors with the fuzzy inference engine to autonomously throttle drone speed and dispatch early alerts.
-4. To evaluate the mathematical stability and defuzzification characteristics of the controller across diverse environmental trajectories.
+**Deterministic fire danger indices.** The McArthur Forest Fire Danger Index fuses temperature, humidity, wind and a drought factor into one continuous score, and its category boundaries still anchor Australian fire-weather warnings [3]. The index is transparent to a duty officer, but it is calibrated to eucalypt fuel and its warning tiers are hard cuts: a score of 49.9 and a score of 50.1 land in different categories although the hazard is indistinguishable. The discontinuity is the problem — near a boundary the reported danger jumps while the forest does not change.
 
----
+**Learning-based perception.** Multi-sensor UAV payloads now report fire fronts from fused thermal and visual perception [4], and deep models reach a higher performance ceiling than hand-written rules. Their decision surface, however, is a weight matrix that cannot be read back to a fire officer. On a decision that dispatches an aircraft and mobilises a crew, "the network scored this 0.91" is not an explanation that can be defended after the fact.
 
-## 2. Literature Review
+**Simulation-only studies.** Many fuzzy wildfire controllers are evaluated on synthetic data with no actuation loop, so the reported risk index is never connected to a platform that has to move. NVIDIA Isaac Sim closes that loop with a physically based OpenUSD stage, synthetic sensor publication and Action Graph actuation [5], which makes sense-infer-actuate reproducible and inspectable.
 
-### 2.1 Fire Danger Rating: Indices Versus Linguistic Variables
-Deterministic fire danger ratings dominate operational practice. The McArthur Forest Fire Danger Index fuses temperature, humidity, wind speed and a drought factor into one continuous score, and its category boundaries still anchor Australian fire-weather warnings [3]. The index is transparent to a duty officer, yet it is calibrated to eucalypt fuel and its warning tiers are hard cuts: a score of 49.9 and a score of 50.1 fall into different categories although the underlying hazard is indistinguishable. Exactly that discontinuity motivates the fuzzy treatment adopted here, in which a reading belongs to several linguistic classes at once with graded membership rather than to one class by comparison [2].
+The gap is therefore a controller that keeps the interpretability of a rule base, replaces the threshold of an index with graded membership, and is demonstrated inside a simulation that closes the loop. Mamdani inference supplies the first two properties [1]; Isaac Sim supplies the third.
 
-### 2.2 Mamdani Inference and the Defuzzification Choice
-The linguistic controller of Mamdani and Assilian established the architecture reused in this project: fuzzify each antecedent, evaluate a conjunctive rule base with min, aggregate the clipped consequents with max, and defuzzify the union into one crisp actuation value [1]. Their formulation deliberately keeps the rule base readable in domain language, which is the property this work relies on for the explanation in Section 6.1. The defuzzification step is where published results diverge, because centroid, bisector and mean-of-maximum disagree on the same aggregated set; Section 5.2 measures that disagreement on this rule base instead of asserting a preference.
-
-### 2.3 UAV-Based Wildfire Monitoring
-Aerial platforms have become the standard sensing layer for early detection, and multi-sensor UAV payloads now report fire fronts from fused thermal and visual perception [4]. Those systems concentrate on perception — what the camera sees and how confidently — and leave the dispatch decision to a ground operator. That split is the opening for this project: the controller here does not classify pixels. It ingests the same four meteorological scalars a weather station reports and returns a continuous dispatch throttle, so the decision layer can be audited independently of whatever perception layer feeds it.
-
-### 2.4 Simulation as the Evaluation Substrate
-Field trials are outside a coursework budget, so the evaluation substrate is a simulated forest. NVIDIA Isaac Sim supplies a physically based OpenUSD stage, synthetic sensor publication and scripted actuation through the Action Graph, which makes the sense-infer-actuate loop reproducible and inspectable [5]. The simulator also makes the mission deterministic: the seed-$0$ patrol reported in Section 5.1 can be replayed by any reviewer with the commands in the repository.
-
-### 2.5 Positioning Against Learning-Based Controllers
-Deep reinforcement learning and neural perception promise a higher performance ceiling on the same task, but their decision surface is a weight matrix that cannot be read back to a domain expert. Mamdani inference retains every intermediate quantity: membership degree, rule firing strength and per-rule contribution to the aggregated set. The contribution claimed here is therefore not a more accurate predictor than a learned model; it is a controller whose every alert traces back to a rule that a fire officer is able to challenge. The two approaches are complementary, and Section 7 names the hybridisation route by which a learned policy would enter, with the fuzzy index retained as its reward signal rather than replaced.
+### 1.3 Objectives and Contributions
+1. Formulate a Mamdani fuzzy system with four environmental inputs and three continuous control outputs.
+2. Build a procedural OpenUSD forest stage in NVIDIA Isaac Sim with terrain, drought-stressed canopy and dynamic thermal hotspots.
+3. Bridge synthetic Isaac Sim sensors to the inference engine so patrol speed and alert tier are dispatched autonomously.
+4. Evaluate the controller on a reproducible mission and benchmark its defuzzification choice against two alternatives.
 
 ---
 
-## 3. System Design & Mathematical Formulation
+## 2. System Design
 
-### 3.1 System Architecture
-The pipeline is a single loop. Isaac Sim publishes four synthetic sensor scalars, the fuzzy engine defuzzifies three consequents, and the actuation stage writes the result back onto the same stage. Figure 1 shows the three modules and the payload that crosses each boundary; the counts in it are read from the controller and the stage builder at figure-build time, not typed in by hand.
+### 2.1 Architecture
+The pipeline is a single loop (Figure 1). Isaac Sim publishes four synthetic sensor scalars, the fuzzy engine defuzzifies three consequents, and the actuation stage writes the result back onto the same stage. The counts in the figure are read from the controller and the stage builder at figure-build time, so they cannot drift from the code.
 
 *(Figure 1 below is generated from the controller and the stage builder, so its counts cannot drift from the code.)*
 
-### 3.2 Linguistic Input Variables & Membership Functions
-The controller incorporates four input variables spanning realistic meteorological boundaries:
+### 2.2 Input Variables and Membership Functions
+Four input universes cover the meteorological range a forest weather station reports. Each is partitioned into four linguistic terms, with trapezoids closing the outer sets so that a reading past the sensor range saturates instead of running off the universe.
 
-#### 1. Ambient Temperature ($T \in [0, 50]^\circ\text{C}$):
-* $\text{Low}(T) = \text{trapmf}(T; 0, 0, 15, 22)$
-* $\text{Moderate}(T) = \text{trimf}(T; 18, 26, 34)$
-* $\text{High}(T) = \text{trimf}(T; 30, 38, 44)$
-* $\text{Extreme}(T) = \text{trapmf}(T; 40, 45, 50, 50)$
+| Variable (universe) | Linguistic sets | Membership parameters |
+|---|---|---|
+| Ambient temperature $T$ ($0$–$50\ ^\circ\text{C}$) | Low, Moderate, High, Extreme | trapmf(0, 0, 15, 22), trimf(18, 26, 34), trimf(30, 38, 44), trapmf(40, 45, 50, 50) |
+| Relative humidity $RH$ ($0$–$100\ \%$) | High, Moderate, Low, Very Low | trapmf(70, 85, 100, 100), trimf(40, 60, 75), trimf(20, 35, 50), trapmf(0, 0, 15, 25) |
+| Wind speed $W$ ($0$–$100\ \text{km/h}$) | Calm, Moderate, High, Severe | trapmf(0, 0, 10, 20), trimf(15, 30, 45), trimf(40, 60, 75), trapmf(70, 85, 100, 100) |
+| Fuel dryness $F$ ($0$–$100\ \%$) | Wet, Moderate, Dry, Critically Dry | trapmf(0, 0, 20, 35), trimf(30, 50, 70), trimf(65, 80, 90), trapmf(85, 95, 100, 100) |
 
-#### 2. Relative Humidity ($RH \in [0, 100]\%$):
-* $\text{Very Low}(RH) = \text{trapmf}(RH; 0, 0, 15, 25)$
-* $\text{Low}(RH) = \text{trimf}(RH; 20, 35, 50)$
-* $\text{Moderate}(RH) = \text{trimf}(RH; 40, 60, 75)$
-* $\text{High}(RH) = \text{trapmf}(RH; 70, 85, 100, 100)$
-
-#### 3. Wind Velocity ($W \in [0, 100]\text{ km/h}$):
-* $\text{Calm}(W) = \text{trapmf}(W; 0, 0, 10, 20)$
-* $\text{Moderate}(W) = \text{trimf}(W; 15, 30, 45)$
-* $\text{High}(W) = \text{trimf}(W; 40, 60, 75)$
-* $\text{Severe}(W) = \text{trapmf}(W; 70, 85, 100, 100)$
-
-#### 4. Vegetation / Fuel Moisture Dryness ($F \in [0, 100]\%$):
-* $\text{Wet}(F) = \text{trapmf}(F; 0, 0, 20, 35)$
-* $\text{Moderate}(F) = \text{trimf}(F; 30, 50, 70)$
-* $\text{Dry}(F) = \text{trimf}(F; 65, 80, 90)$
-* $\text{Critically Dry}(F) = \text{trapmf}(F; 85, 95, 100, 100)$
-
-The mathematical definitions for triangular $\text{trimf}(x; a, b, c)$ and trapezoidal $\text{trapmf}(x; a, b, c, d)$ functions are defined as:
+Adjacent terms overlap by $4^\circ\text{C}$ between temperature sets, $5$ percentage points between humidity sets, $5\text{ km/h}$ between wind sets and $5$ points between fuel sets, so a reading near a boundary belongs partially to both terms and its output moves continuously rather than switching. Triangular and trapezoidal membership are the standard forms:
 
 $$\text{trimf}(x; a, b, c) = \max\Big(0,\ \min\big((x - a)/(b - a),\ (c - x)/(c - b)\big)\Big)$$
 
 $$\text{trapmf}(x; a, b, c, d) = \max\Big(0,\ \min\big((x - a)/(b - a),\ 1,\ (d - x)/(d - c)\big)\Big)$$
 
-### 3.3 Linguistic Output Variables
+### 2.3 Output Variables
+Three Mamdani consequents are defuzzified. Each rule fires one term in every output universe, so the alert tier is inferred by the rule base rather than thresholded from the risk index.
 
-Three Mamdani consequents are defuzzified. Each rule fires one term in every output
-universe, so the alert level is inferred by the rule base rather than thresholded from
-the fire risk index.
+1. **Fire Risk Index ($\text{FRI} \in [0, 100]$)**: Low trapmf(0, 0, 20, 35), Moderate trimf(25, 45, 65), High trimf(55, 75, 85), Extreme trapmf(80, 90, 100, 100).
+2. **UAV patrol urgency ($S \in [0, 100]\ \%$)**: Standard Patrol trapmf(0, 0, 25, 45), Accelerated trimf(40, 60, 80), Emergency Dispatch trapmf(75, 90, 100, 100).
+3. **Suppression alert ($A \in [0, 3]$)**: Advisory trapmf(0, 0, 0, 0.6), Watch trimf(0.4, 1.0, 1.6), Warning trimf(1.4, 2.0, 2.6), Evacuate/Suppress trapmf(2.4, 3, 3, 3).
 
-1. **Fire Risk Index ($\text{FRI} \in [0, 100]$)**:
-   * $\text{Low} = \text{trapmf}(0, 0, 20, 35)$
-   * $\text{Moderate} = \text{trimf}(25, 45, 65)$
-   * $\text{High} = \text{trimf}(55, 75, 85)$
-   * $\text{Extreme} = \text{trapmf}(80, 90, 100, 100)$
+The alert universe is sampled at $\Delta a = 0.25$ so every integer tier and every set shoulder falls on a sample, which keeps each triangular set peaking at exactly $1.0$. The discrete tier reported downstream is $\text{round}(A^*)$ clamped to $[0, 3]$; the continuous $A^*$ is the primary output. Figure 2 plots all seven universes.
 
-2. **UAV Patrol Speed & Urgency ($S \in [0, 100]\%$)**:
-   * $\text{Standard Patrol} = \text{trapmf}(0, 0, 25, 45)$
-   * $\text{Accelerated} = \text{trimf}(40, 60, 80)$
-   * $\text{Emergency Dispatch} = \text{trapmf}(75, 90, 100, 100)$
+*(Figure 2 plots all seven universes; severity reads as luminance, lime for the least hazardous term and black for the most hazardous.)*
 
-3. **Suppression Alert Level ($A \in [0, 3]$)**:
-   * $\text{Advisory} = \text{trapmf}(0, 0, 0, 0.6)$
-   * $\text{Watch} = \text{trimf}(0.4, 1.0, 1.6)$
-   * $\text{Warning} = \text{trimf}(1.4, 2.0, 2.6)$
-   * $\text{Evacuate/Suppress} = \text{trapmf}(2.4, 3, 3, 3)$
-
-The alert universe is sampled at $\Delta a = 0.25$ so every integer tier and every set
-shoulder ($0.4$, $1.6$, $1.4$, $2.6$) falls on a sample, which keeps each triangular set
-peaking at exactly $1.0$. The discrete alert tier reported downstream is
-$\text{round}(A^*)$ clamped to $[0, 3]$; the continuous $A^*$ is the primary output.
-
-*(Figure 2 plots all seven variables; Figure 3 isolates the three output universes so the alert consequent can be read on its own.)*
-
-### 3.4 Fuzzy Rule Base & Inference Logic
-The rule matrix takes its four antecedents from the structure of the McArthur Forest Fire Danger Index [3] (temperature, relative humidity, wind, fuel dryness) and its direction of effect, then assigns the linguistic bands by hand. It is not a reimplementation of McArthur: no index value is computed and no McArthur coefficient is used. What the rule base encodes is the sign of each dependence — higher temperature, lower humidity, higher wind and drier fuel each push the consequents up, and the rules that combine drought-stressed fuel with wind dominate the top of the range. Representative rules include:
+### 2.4 Rule Base and Inference
+The rule matrix takes its four antecedents from the structure of the McArthur index [3] — temperature, humidity, wind, fuel dryness — and its direction of effect, then assigns linguistic bands by hand. It is not a reimplementation of McArthur: no index value is computed and no coefficient is used. What the rule base encodes is the sign of each dependence; rules that combine drought-stressed fuel with wind dominate the top of the range.
 
 **Table 1: The ten Mamdani rules. Each antecedent is a conjunction of linguistic terms, and every rule fires one term in each of the three output universes.**
 
@@ -150,124 +100,71 @@ The rule matrix takes its four antecedents from the structure of the McArthur Fo
 | **R9** | Extreme | any | any | Critically Dry | Extreme | Emergency Dispatch | Evacuate/Suppress |
 | **R10** | any | High | Calm | any | Low | Standard Patrol | Advisory |
 
-`any` means the rule does not constrain that variable. Each row fires all three
-consequents simultaneously; the alert column is a fuzzy consequence, not a label
-derived from the risk column.
+`any` means the rule does not constrain that variable. Each row fires all three consequents simultaneously, so the alert column is a fuzzy consequence rather than a label derived from the risk column. Rule firing strength $\alpha_k$ uses the minimum t-norm over the antecedents and the consequents aggregate by maximum:
 
-Under Mamdani inference, rule firing strength $\alpha_k$ for rule $k$ is computed using the t-norm (minimum operator):
 $$\alpha_k = \min\Big(\mu_{T, k}(T), \mu_{RH, k}(RH), \mu_{W, k}(W), \mu_{F, k}(F)\Big)$$
-The aggregated output fuzzy subset $\mu_{\text{agg}}(y)$ is formed through the s-norm (maximum union):
+
 $$\mu_{\text{agg}}(y) = \max_{k} \Big(\min\big(\alpha_k, \mu_{\text{output}, k}(y)\big)\Big)$$
 
-### 3.5 Defuzzification Formulation
-To generate deterministic crisp values for the three consequents, Center of Gravity (Centroid / COG) defuzzification is applied:
+### 2.5 Defuzzification
+Crisp outputs come from the centre of gravity of the aggregated set, computed over a 500-sample universe:
 
-$$y^* = \frac{\int y \cdot \mu_{\text{agg}}(y)\, dy}{\int \mu_{\text{agg}}(y)\, dy}$$
+$$y^* = \frac{\sum_i y_i \, \mu_{\text{agg}}(y_i)}{\sum_i \mu_{\text{agg}}(y_i)}$$
 
----
+Centroid is chosen over bisector and mean-of-maximum for continuity, and Section 3.2 measures that difference on this rule base rather than asserting it.
 
-## 4. NVIDIA Isaac Sim Integration
+### 2.6 Isaac Sim Stage and UAV Agent
+An OpenUSD scene asset (`assets/wildfire_forest_uav_stage.usda`) carries the mission:
+* **Terrain**: $65\text{m} \times 65\text{m}$ ground plane with a mossy forest shader (`UsdPreviewSurface`), sun distant light at $2800\text{ lx}$ and a $450\text{ lx}$ dome fill under RTX real-time ray tracing.
+* **Canopy**: {{engine.trees_in_asset}} procedurally distributed trees ({{engine.trees_requested}} requested; the generator drops any trunk within $4.0\text{m}$ of the origin, the landing zone), trunk heights $3.5$–$7.5\text{m}$, two canopy tiers, foliage alternating between healthy green `(0.09, 0.32, 0.12)` and drought-stressed amber `(0.55, 0.44, 0.18)`, each tree marked dry at $p = 0.35$ under a fixed seed.
+* **Hotspots**: {{engine.hotspots}} ignition centres — $(14.0, 16.0)\text{m}$ radius $3.5\text{m}$ with emissive flame core, $(-18.0, 10.0)\text{m}$ radius $2.8\text{m}$, $(8.0, -20.0)\text{m}$ radius $2.2\text{m}$.
 
-### 4.1 Scene Architecture & Procedural Stage Design
-An OpenUSD scene asset (`assets/wildfire_forest_uav_stage.usda`) was created to carry the surveillance mission:
-* **Terrain Grid**: $65\text{m} \times 65\text{m}$ ground plane rendered with a mossy forest ground shader (`UsdPreviewSurface`).
-* **Vegetation Canopy**: {{engine.trees_in_asset}} procedurally distributed trees ({{engine.trees_requested}} were requested; the generator drops any trunk that would land within $4.0\text{m}$ of the origin, which is the UAV landing zone) with trunk heights sampled from $3.5\text{m}$ to $7.5\text{m}$ and two canopy tiers. Foliage shaders alternate between healthy green (`diffuseColor = (0.09, 0.32, 0.12)`) and drought-stressed amber (`diffuseColor = (0.55, 0.44, 0.18)`), with each tree independently marked dry at $p = 0.35$ under the generator's fixed seed.
-* **Thermal Ignition Hotspots**: {{engine.hotspots}} hazard epicenters positioned across the grid:
-  * Hotspot 1 (Severe): Position $(14.0\text{m}, 16.0\text{m})$, radius $3.5\text{m}$, emissive flame core.
-  * Hotspot 2 (Moderate): Position $(-18.0\text{m}, 10.0\text{m})$, radius $2.8\text{m}$.
-  * Hotspot 3 (Emerging): Position $(8.0\text{m}, -20.0\text{m})$, radius $2.2\text{m}$.
-* **Lighting Model**: Sun distant light ($2800\text{ lx}$, $32^\circ$ azimuth) paired with ambient dome sky light ($450\text{ lx}$) under RTX real-time ray tracing.
-
-### 4.2 Quadcopter UAV Prim & Dynamic Flight Keyframing
-The surveillance agent (`/World/UAV_Drone`) is built from a carbon composite fuselage, four cross-spar boom arms, a forward optical sensor pod, and four $0.24\text{m}$ propeller discs.
-
-To keep the trajectory deterministic instead of letting a rigid body fall under gravity, the drone follows a kinematic path baked as OpenUSD `.timeSamples` over frames ${{engine.frame_start}}$ to ${{engine.frame_end}}$ (${{engine.fps}}\text{ fps}$, ${{engine.clip_seconds}}\text{s}$):
-* **Translational Trajectory**: {{engine.uav_keyframes}} keyframe waypoints cruising at $4.5\text{m}$ to $7.0\text{m}$ altitude.
-* **Attitude Banking**: yaw alignment $\psi = \arctan2(\Delta y, \Delta x)$ toward the next keyframe, with a $5.0^\circ$ forward cruise pitch.
-* **Sensor Keyframing**: the fuzzy telemetry is baked on the same keyframes as the trajectory, as custom attributes `fuzzy:temperature`, `fuzzy:fire_risk_index` and `fuzzy:patrol_urgency_speed`, each produced by the same `synthesise_sensors()` + controller pair that generates Table 2.
-
-The rotor discs are static geometry in this phase: the stage model does not animate blade rotation, so no blade rate is claimed here.
+The agent `/World/UAV_Drone` is a carbon fuselage with four boom arms, a forward sensor pod and four $0.24\text{m}$ propeller discs. It follows a kinematic path baked as `.timeSamples` over frames ${{engine.frame_start}}$–${{engine.frame_end}}$ (${{engine.fps}}\text{ fps}$), cruising at $4.5$–$7.0\text{m}$ over {{engine.uav_keyframes}} keyframes, with yaw $\psi = \arctan2(\Delta y, \Delta x)$ toward the next keyframe and $5.0^\circ$ cruise pitch. The fuzzy telemetry is baked on the same keyframes as custom attributes `fuzzy:temperature`, `fuzzy:fire_risk_index` and `fuzzy:patrol_urgency_speed`, produced by the same `synthesise_sensors()` and controller pair that generates Table 2. A kinematic path was chosen over a rigid-body drop so the evaluation is repeatable; the rotors are static geometry and no blade rate is claimed.
 
 ---
 
-## 5. Experimental Results & Performance Evaluation
+## 3. Evaluation
 
-### 5.1 Autonomous Surveillance Mission Telemetry
-A 12-waypoint reconnaissance mission was simulated over the forest stage. At each waypoint `synthesise_sensors()` returns the four readings, and the controller consumes them; both the mission log below and the telemetry attributes baked into the USD stage call that same function, so the two cannot diverge. The mission log is a deterministic artefact: the sensor jitter is drawn from `random.Random(seed)` with `seed = 0`, so re-running `run_stage_patrol_simulation(stage, steps=12, seed=0)` reproduces Table 2 exactly.
+### 3.1 Case Study: Twelve-Waypoint Patrol
+A 12-waypoint reconnaissance mission was simulated over the forest stage. At each waypoint `synthesise_sensors()` returns the four readings and the controller consumes them; both Table 2 and the attributes baked into the USD stage call that same function, so the two cannot diverge. Sensor jitter is drawn from `random.Random(seed)` with `seed = 0`, so `run_stage_patrol_simulation(stage, steps=12, seed=0)` reproduces the log exactly.
 
-**Table 2: Real-Time UAV Surveillance Mission Telemetry & Fuzzy Ingestion Log (seed = 0)**
+**Table 2: UAV surveillance mission telemetry and fuzzy ingestion log (seed = 0)**
 
 {{TABLE_MISSION}}
 
-Note that waypoint 04 carries a higher risk index than waypoint 05 but a lower alert
-value: the alert consequent is a separate inference, so the two outputs are correlated
-but not a remapping of one another.
+Waypoint 04 carries a higher risk index than waypoint 05 but a lower alert value: the alert consequent is a separate inference, so the two outputs correlate without one being a remapping of the other. Figure 3 replays the mission: the 3D path coloured by risk index, the two atmospheric series, the fuel and wind series, and the two actuation outputs.
 
-*(Figure 4 replays the same seed-$0$ mission across four panels: the 3D flight path coloured by fire risk index, the two atmospheric series, the fuel and wind series, and the two actuation outputs.)*
+*(Figure 3 replays the same seed-0 mission across four panels: the 3D flight path coloured by fire risk index, the two atmospheric series, the fuel and wind series, and the two actuation outputs.)*
 
-### 5.2 Defuzzification Method Comparison
-To assess output sensitivity, the fire risk consequent was rebuilt with three
-defuzzification algorithms through `src/fuzzy_system/defuzz_benchmark.py`, which runs
-each method on the same membership sets and rule base:
+### 3.2 Defuzzification Comparison
+The fire risk consequent was rebuilt with three defuzzification algorithms through `src/fuzzy_system/defuzz_benchmark.py`, each on the same membership sets and rule base.
 
-**Table 3: Defuzzification Algorithm Benchmark, Fire Risk Index**
+**Table 3: Defuzzification algorithm benchmark, fire risk index**
 
 {{TABLE_DEFUZZ}}
 
-Largest centroid-to-MOM divergence is $2.9$ risk points, at the Critical scenario where
-the aggregated set has two separated peaks. Centroid and bisector agree to within $0.3$
-points on every scenario.
+The largest centroid-to-MOM divergence is $2.9$ risk points, at the Critical scenario where the aggregated set has two separated peaks; centroid and bisector agree within $0.3$ points everywhere. The methods do not separate on cost — defuzzification over a 500-point universe is a small part of the evaluation loop — they separate on continuity. MOM returns the mean of the aggregated maxima, so as an input crosses a boundary the output jumps between peaks, which on a $250\text{ g}$ airframe is a torque step. Centroid integrates the whole area and is continuous in the input, which is why it is used for the throttle.
 
-* **Analysis**: the three methods do not separate on cost, because defuzzification over
-  a 500-point universe is a small part of the evaluation loop. They separate on
-  continuity. MOM returns the mean of the aggregated set's maxima, so as the input
-  crosses a boundary the output jumps between peaks — a torque step on a 250 g
-  airframe. Centroid integrates the whole area, so its output is continuous in the
-  input; the observed effect is the 2.9-point centroid-to-MOM gap at the Critical
-  scenario in Table 3.
+### 3.3 Runtime Performance
+Measurements were taken on a GeForce RTX 4060 laptop GPU with 16 GB RAM and a 14-core i7-13650HX, through `tools/presentation/measure.py`, which calls `WildfireFuzzyController.compute()` for 20,000 evaluations per scenario after a 2,000-call warm-up. Median loop cost is ${{latency.benign_median_ms}}\ \text{ms}$ for the benign scenario and ${{latency.critical_median_ms}}\ \text{ms}$ for the critical one (p99 ${{latency.benign_p99_ms}}\ \text{ms}$ and ${{latency.critical_p99_ms}}\ \text{ms}$). Both medians sit two orders of magnitude inside a $50\ \text{ms}$ control budget, which leaves room for the sensing and actuation around them. Host-Python timings include interpreter overhead and are an upper bound on a deployed figure. Viewport frame rate is not claimed: the stage was exercised through the headless builder and the bridge mock, neither of which reports rendering throughput.
 
-### 5.3 Simulation Runtime & Engine Performance
-* **Hardware Platform**: NVIDIA GeForce RTX 4060 Laptop GPU, 16 GB RAM, 14-core Intel Core i7-13650HX.
-* **Fuzzy Inference Latency**: measured with `tools/presentation/measure.py`, which
-  calls `WildfireFuzzyController.compute()` over 20,000 calls per scenario after a
-  2,000-call warm-up: median ${{latency.benign_median_ms}}\ \text{ms}$ for the benign scenario
-  and ${{latency.critical_median_ms}}\ \text{ms}$ for the critical scenario (p99
-  ${{latency.benign_p99_ms}}\ \text{ms}$ and ${{latency.critical_p99_ms}}\ \text{ms}$
-  respectively). Both medians sit inside a $50\text{ ms}$ control budget with two orders of
-  magnitude of headroom, which supports edge deployment on embedded microcomputers
-  (e.g., NVIDIA Jetson Orin Nano). Host-Python timings include interpreter overhead and
-  are an upper bound on the deployed figure. Every figure in this section is regenerated
-  by `tools/presentation/measure.py` into `docs/measurements.json`, which the report, the
-  poster and the deck all read, so a re-measurement on another machine propagates to all
-  three instead of leaving them inconsistent.
-* **Not measured in this phase**: viewport frame rate. The simulation was exercised
-  through the headless stage builder and the bridge mock, neither of which reports
-  rendering throughput, so no frame-rate figure is claimed here.
+### 3.4 Discussion
+**What the output shows.** The controller does what a threshold cannot: over the seed-0 mission the patrol throttle rises from $20.1\%$ at the benign waypoints to $89.5\%$ at waypoint 03, where the fire risk index reads $91.4$ and the suppression alert $2.826$ of $3$ (`CRITICAL`). The largest throttle change between consecutive waypoints, $69.8$ points, occurs only on the step that leaves the second hotspot radius — the aircraft accelerates into hazard and relaxes on exit, which is the behaviour a patrol policy needs.
+
+**Why an operator can accept it.** Every intermediate quantity is inspectable. `tools/report/rule_trace.py` prints the trace for any input; at waypoint 03 it reads temperature extreme $= 0.560$, humidity very low $= 0.610$, wind high $= 0.260$, fuel critical $= 0.180$, with Rule 7 firing at $0.560$, Rules 8 and 9 at $0.180$ each and the remaining seven at zero. The reported alert is the centroid of exactly those three clipped consequents, so a reviewer can reproduce the arithmetic from the printed trace instead of trusting a weight matrix [1][4].
+
+**Robustness to sensor noise.** Every input universe is fully covered and adjacent sets overlap, so no reading lands where all antecedents are zero and a boundary reading moves the output continuously. The effect is visible in the throttle trace: changes between consecutive waypoints inside a hazard approach are $10.5$ and $19.0$ points, against the $69.8$-point change on exit. A noisy thermometer perturbs the memberships; it does not toggle the tier.
+
+**Impact on the SDGs.** A patrol that accelerates on graded hazard spends airtime where the risk is, which is the mechanism by which SDG 13 (Target 13.1) is served: an earlier report shortens the burn and the associated emissions. Because the rule base is readable, a park authority can adopt the controller without a data-science team, which is what makes the SDG 15 (Target 15.2) protection claim deployable rather than theoretical. Against a deterministic index [3] the gain is at the category boundaries; against a learned model the gain is auditability.
+
+**Limitations.** The trajectory is kinematic; downwash and rotor stall under updrafts would need PhysX fluid coupling. Wind is a scalar field, so the wind antecedent has no vertical component. Rendering throughput is not measured, and the rotor discs are static geometry. Finally, the rule base is expert-authored and validated on a simulated forest, so field calibration against local fuel models remains open.
 
 ---
 
-## 6. Discussion & Limitations
+## 4. Conclusion
+The project delivered a working Mamdani fuzzy system inside NVIDIA Isaac Sim that turns four environmental scalars into three defuzzified consequents and closes the loop onto an autonomous patrol. On a deterministic 12-waypoint mission the controller moved from $20.1\%$ to $89.5\%$ patrol urgency as the aircraft entered a hotspot, with a suppression alert of $2.826$ of $3$, and it did so with every intermediate quantity exposed for audit. The engine matches a scikit-fuzzy reference to within ${{reference.worst_deviation}}$ across {{reference.scenarios_total}} scenarios, passes {{tests.passed}} unit tests, and costs ${{latency.benign_median_ms}}\ \text{ms}$ per evaluation loop. Compared with a deterministic fire danger index it removes the category cliff; compared with a learned controller it keeps the explanation.
 
-### 6.1 Explainability vs. Black-Box Neural Networks
-Unlike deep learning perception models whose decision weights cannot be formally verified [1][4], Mamdani fuzzy systems expose every intermediate quantity: the membership degree of each input, the firing strength of each rule, and the contribution of each rule to the aggregated set. `tools/report/rule_trace.py` prints that trace for any input, which makes the audit mechanical rather than interpretive. At waypoint 03 of Table 2 the trace reads: temperature extreme $= 0.560$, humidity very low $= 0.610$, wind high $= 0.260$, fuel critical $= 0.180$; Rule 7 (extreme temperature with very low humidity) fires at $0.560$, Rules 8 and 9 at $0.180$ each, and the remaining seven rules at zero. The reported alert of $2.826$ is the centroid of exactly those three clipped consequents. A reviewer can reproduce that arithmetic from the printed trace, which is what a duty officer needs in order to accept an alert.
-
-### 6.2 Sensor Noise Resilience
-Physical sensors in forest conditions suffer from thermal drift and anemometer turbulence. Two properties of the rule base limit the effect of that drift. First, every input universe is fully covered: the four temperature sets span $[0, 50]^\circ\text{C}$ without a gap, and the same holds for humidity, wind and fuel dryness, so no reading can land where every antecedent is zero. Second, adjacent sets overlap, by $4^\circ\text{C}$ between the temperature sets, $5$ percentage points between the humidity sets, $5\text{ km/h}$ between the wind sets and $5$ points between the fuel sets, so a reading near a boundary is partially in both sets and its output moves continuously rather than switching. Centroid defuzzification then integrates the interpolated area, which is what keeps the throttle trace in Table 2 free of single-waypoint reversals: the changes between consecutive waypoints inside a hazard approach are $10.5$ and $19.0$ points, while the largest change, $69.8$ points, occurs only on the step where the UAV leaves the second hotspot radius.
-
-### 6.3 Limitations
-1. **Kinematic vs. Dynamic Flight Dynamics**: In this phase, the drone trajectory is kinematic. Aerodynamic downwash and rotor blade stall under intense updrafts require coupling with PhysX fluid dynamics extensions, which were not enabled.
-2. **2D Surface Weather Synthesis**: Wind velocity was modelled as a scalar field. Three-dimensional atmospheric thermal updrafts were not modelled, so the wind antecedent sees no vertical component.
-3. **No Rendering Throughput Figure**: Rendering was exercised through the stage generator and the bridge mock, neither of which reports frame rate, so the report quotes inference latency only and makes no claim about viewport frame rate or render quality under load.
-4. **Static Rotors**: The four propeller discs are geometry only. Blade rotation is not animated and no blade rate is claimed.
-
----
-
-## 7. Conclusion & Future Work
-This project designed, implemented and validated an autonomous wildfire risk assessment and UAV surveillance loop built on Mamdani fuzzy inference inside NVIDIA Isaac Sim. The controller maps four environmental scalars into three defuzzified consequents and, over the 12-waypoint seed-$0$ mission of Table 2, drives the patrol throttle from $20.1\%$ at the benign waypoints to $89.5\%$ at waypoint 03, where the fire risk index reaches $91.4$ and the suppression alert reaches $2.826$ (tier `CRITICAL`). Each evaluation loop costs ${{latency.benign_median_ms}}\ \text{ms}$ (benign) and ${{latency.critical_median_ms}}\ \text{ms}$ (critical) on the build machine, which is two orders of magnitude inside a $50\ \text{ms}$ control budget. The engine agrees with a scikit-fuzzy reference implementation to within ${{reference.worst_deviation}}$ across {{reference.scenarios_total}} scenarios, and {{tests.passed}} unit tests pass.
-
-### Future Enhancements:
-1. **Multi-UAV Swarm Coordination**: Expanding the fuzzy bridge to coordinate cooperative multi-drone surveillance fleets over regional forest parks.
-2. **Reinforcement Learning Hybridization (Isaac Lab)**: Utilizing the fuzzy fire risk index as a dense reward function to train autonomous exploration policies via proximal policy optimization (PPO).
+Future work follows the limitations: coupling the trajectory to PhysX for dynamic flight, adding a vertical wind component, calibrating the rule base against a local fuel model, and using the fuzzy index as a dense reward for a reinforcement-learning exploration policy in Isaac Lab, where the learned component would propose waypoints while the rule base keeps veto authority over the alert tier.
 
 ---
 
